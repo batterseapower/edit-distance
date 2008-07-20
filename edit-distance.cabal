@@ -1,0 +1,27 @@
+Name:           edit-distance
+Version:        0.1
+Cabal-Version:  >= 1.2
+Description:    Edit distances for fuzzy matching, including Levenhstein and Damerau-Levenshtein algorithms.
+License:        BSD3
+License-File:   LICENSE
+Author:         Max Bolingbroke
+Maintainer:     batterseapower@hotmail.com
+Build-Type:     Simple
+
+Flag Tests
+        Description:    Enable building the tests
+        Default:        False
+
+
+Library
+        Exposed-Modules:        Text.EditDistance
+        Build-Depends:          base, array >= 0.1, random >= 1.0
+
+Executable edit-distance-tests
+        Main-Is:                Text/EditDistance/Tests.hs
+        Build-Depends:          base, array >= 0.1, random >= 1.0, QuickCheck >= 1.1
+        Extensions:             PatternGuards, PatternSignatures, 
+                                RankNTypes, ExistentialQuantification
+        
+        if !flag(tests)
+                Buildable:      False
