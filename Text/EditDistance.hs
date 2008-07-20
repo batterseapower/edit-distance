@@ -18,6 +18,7 @@ data EditCosts = EditCosts {
     transpositionCost :: Int
 }
 
+defaultEditCosts :: EditCosts
 defaultEditCosts = EditCosts {
     deletionCost = 1,
     insertionCost = 1,
@@ -48,7 +49,6 @@ levenshteinDistanceST costs str1 str2 = do
     -- Fill the remaining rows (j >= 1)
     forM_ [1..str2_len] (\j -> do
         row_char <- readArray str2_array j
-        prev_row_char <- readArray str2_array (j - 1)
         
         -- Initialize the first element of the row (i = 0)
         writeArray cost_array (0, j) (insertionCost costs * j)
@@ -56,7 +56,6 @@ levenshteinDistanceST costs str1 str2 = do
         -- Fill the remaining elements of the row (i >= 1)
         forM_ [1..str1_len] (\i -> do
             col_char <- readArray str1_array i
-            prev_col_char <- readArray str1_array (i - 1)
             
             cost <- standardCosts costs cost_array row_char col_char (i, j)
             writeArray cost_array (i, j) cost))

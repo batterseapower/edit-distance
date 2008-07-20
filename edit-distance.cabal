@@ -12,16 +12,18 @@ Flag Tests
         Description:    Enable building the tests
         Default:        False
 
-
 Library
         Exposed-Modules:        Text.EditDistance
         Build-Depends:          base, array >= 0.1, random >= 1.0
+        Ghc-Options:            -O2 -Wall -fno-warn-orphans
 
 Executable edit-distance-tests
         Main-Is:                Text/EditDistance/Tests.hs
         Build-Depends:          base, array >= 0.1, random >= 1.0, QuickCheck >= 1.1
         Extensions:             PatternGuards, PatternSignatures, 
-                                RankNTypes, ExistentialQuantification
+                                RankNTypes, ExistentialQuantification,
+                                ScopedTypeVariables
+        Ghc-Options:            -O2 -Wall -fno-warn-orphans
         
         if !flag(tests)
                 Buildable:      False

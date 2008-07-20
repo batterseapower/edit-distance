@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, RankNTypes, ExistentialQuantification #-}
+{-# LANGUAGE PatternGuards, ExistentialQuantification #-}
 
 module Text.EditDistance.Tests.Framework where
 
@@ -26,6 +26,38 @@ class Arbitrary ops => EditOperation ops where
 instance EditOperation op => EditOperation [op] where
    edit = foldM edit
    editCost costs = sum . map (editCost costs)
+
+
+data EditedString ops = MkEditedString {
+    oldString :: String,
+    newString :: String,
+    operations :: ops
+}
+
+instance Show ops => Show (EditedString ops) where
+    show (MkEditedString old_string new_string ops) = show old_string ++ " ==> " ++ show new_string ++ " (by " ++ show ops ++ ")"
+
+instance EditOperation ops => Arbitrary (EditedString ops) where
+    arbitrary = do
+        old_string <- arbitrary
+        edit_operations <- arbitrary
+        new_string <- edit old_string edit_operations
+        return $ MkEditedString {
+            oldString = old_string,
+            newString = new_string,
+            operations = edit_operations
+        }
+
+
+data ExtendedEditOperation = Deletion
+                           | Insertion
+                           | Substitution
+                           | Transposition
+                           deriving (Enum, Bounded, Show)
+
+instance Arbitrary ExtendedEditOperation where
+    arbitrary = fmap toEnum $ choose (fromEnum (minBound :: ExtendedEditOperation), fromEnum (maxBound :: ExtendedEditOperation))
+    coarbitrary op = variant (fromEnum op)
 
 instance EditOperation ExtendedEditOperation where
     edit str op = do
@@ -58,36 +90,16 @@ instance EditOperation ExtendedEditOperation where
     editCost costs Transposition = transpositionCost costs
 
 
-data EditedString ops = MkEditedString {
-    oldString :: String,
-    newString :: String,
-    operations :: ops
-}
+-- This all really sucks but I can't think of something better right now
+newtype BasicEditOperation = MkBasic ExtendedEditOperation
 
-type ExtendedMultiplyEditedString = EditedString [ExtendedEditOperation]
-type ExtendedSinglyEditedString = EditedString ExtendedEditOperation
+instance Show BasicEditOperation where
+    show (MkBasic x) = show x
 
-instance Show ops => Show (EditedString ops) where
-    show (MkEditedString old_string new_string ops) = show old_string ++ " ==> " ++ show new_string ++ " (by " ++ show ops ++ ")"
+instance Arbitrary BasicEditOperation where
+    arbitrary = fmap (MkBasic . toEnum) $ choose (fromEnum (minBound :: ExtendedEditOperation), fromEnum (maxBound :: ExtendedEditOperation) - 1)
+    coarbitrary (MkBasic op) = variant (fromEnum op)
 
-instance EditOperation ops => Arbitrary (EditedString ops) where
-    arbitrary = do
-        old_string <- arbitrary
-        edit_operations <- arbitrary
-        new_string <- edit old_string edit_operations
-        return $ MkEditedString {
-            oldString = old_string,
-            newString = new_string,
-            operations = edit_operations
-        }
-
-
-data ExtendedEditOperation = Deletion
-                           | Insertion
-                           | Substitution
-                           | Transposition
-                           deriving (Enum, Bounded, Show)
-
-instance Arbitrary ExtendedEditOperation where
-    arbitrary = fmap toEnum $ choose (fromEnum (minBound :: ExtendedEditOperation), fromEnum (maxBound :: ExtendedEditOperation))
-    coarbitrary op = variant (fromEnum op)    
+instance EditOperation BasicEditOperation where
+    edit str (MkBasic op) = edit str op
+    editCost costs (MkBasic op) = editCost costs op
