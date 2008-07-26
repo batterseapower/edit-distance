@@ -9,7 +9,7 @@ Maintainer:     batterseapower@hotmail.com
 Build-Type:     Simple
 
 Flag Tests
-        Description:    Enable building the tests
+        Description:    Enable building the tests and benchmark suite
         Default:        False
 
 Library
@@ -24,6 +24,15 @@ Executable edit-distance-tests
                                 RankNTypes, ExistentialQuantification,
                                 ScopedTypeVariables
         Ghc-Options:            -O2 -Wall -fno-warn-orphans
+        
+        if !flag(tests)
+                Buildable:      False
+
+Executable edit-distance-benchmark
+        Main-Is:                Text/EditDistance/Benchmark.hs
+        Build-Depends:          base, array >= 0.1, random >= 1.0, old-time >= 1.0,
+                                parallel >= 1.0, process >= 1.0, unix >= 2.3
+        Ghc-Options:            -O2 -Wall -fno-warn-orphans -threaded
         
         if !flag(tests)
                 Buildable:      False
