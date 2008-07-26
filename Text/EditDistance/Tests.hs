@@ -22,7 +22,7 @@ indent how_much what = (replicate how_much ' ') ++ what
 
 runTest :: Int -> Test -> IO ()
 runTest indent_level (Property name the_property) = do
-    putStrIndented indent_level (name ++ " ")
+    putStrIndented indent_level (name ++ ": ")
     myTest the_property
 runTest indent_level (TestGroup name the_tests) = do
     putStrLnIndented indent_level (name ++ ":")

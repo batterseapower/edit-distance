@@ -1,20 +1,22 @@
 module Main where
 
-import Text.EditDistance
+import Text.EditDistance.EditCosts
+import qualified Text.EditDistance.Bits as Bits
+import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 
 import System.IO
 import System.Exit
-import System.Posix.IO
+--import System.Posix.IO
 import System.Time      ( ClockTime(..), getClockTime )
 import System.Random
 import System.Process
 import Control.Monad
 import Control.Exception
-import Control.Concurrent       ( forkIO, threadDelay )
-import Control.Parallel.Strategies      ( rnf )
+--import Control.Concurrent       ( forkIO, threadDelay )
+import Control.Parallel.Strategies      ( NFData, rnf )
 
 mAX_STRING_SIZE :: Int
-mAX_STRING_SIZE = 100
+mAX_STRING_SIZE = 20
 
 time :: IO a -> IO Float
 time action = do 
@@ -26,7 +28,7 @@ time action = do
 augment :: Monad m => (a -> m b) -> [a] -> m [(a, b)]
 augment fx xs = liftM (zip xs) $ mapM fx xs
 
-sample :: (EditCosts -> String -> String -> Int) -> (Int, Int) -> IO Float
+sample :: NFData a => (String -> String -> a) -> (Int, Int) -> IO Float
 sample distance bounds@(i, j) = do
     -- Generate two random strings of length i and j
     gen <- newStdGen
@@ -40,10 +42,13 @@ sample distance bounds@(i, j) = do
     
     -- Our sample is the time taken to find the edit distance
     putStrLn $ "Sampling " ++ show bounds
-    time $ loop 1000 $ evaluate (distance defaultEditCosts string1 string2)
+    time $ loop 1000 $ evaluate (distance string1 string2)
 
 loop :: Monad m => Int -> m a -> m ()
 loop n act = sequence_ (replicate n act)
+
+joinOnKey :: Eq a => [(a, b)] -> [(a, c)] -> [(a, (b, c))]
+joinOnKey xs ys = [(x_a, (x_b, y_c)) | (x_a, x_b) <- xs, (y_a, y_c) <- ys, x_a == y_a]
 
 gnuPlotScript :: String
 gnuPlotScript = "set term postscript eps enhanced color\n\
@@ -63,11 +68,23 @@ toGnuPlotFormat samples = unlines (header : map sampleToGnuPlotFormat samples)
 
 main :: IO ()
 main = do
-    samples <- augment (sample restrictedDamerauLevenshteinDistance)
-                       [(i, j) | i <- [0..mAX_STRING_SIZE]
+    let sample_range = [(i, j) | i <- [0..mAX_STRING_SIZE]
                                , j <- [0..mAX_STRING_SIZE]]
+    stu_samples <- augment (sample $ SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts) sample_range
+    bits_samples <- augment (sample $ Bits.restrictedDamerauLevenshteinDistance) sample_range
+    let paired_samples = joinOnKey stu_samples bits_samples
+        diff_samples = [((i, j), stu_time - bits_time) | ((i, j), (stu_time, bits_time)) <- paired_samples]
     
-    writeFile "data.plot" (toGnuPlotFormat samples)
+    writeFile "data.plot" (toGnuPlotFormat diff_samples)
+    writeFile "plot.script" gnuPlotScript
+    
+    (_inp, _outp, _err, gp_pid) <- runInteractiveCommand "(cat plot.script | gnuplot); RETCODE=$?; rm plot.script; exit $RETCODE"
+    gp_exit_code <- waitForProcess gp_pid
+    case gp_exit_code of
+            ExitSuccess -> putStrLn "Plotted at 'data.ps'"
+            ExitFailure err_no -> putStrLn $ "Failed! Error code " ++ show err_no
+    
+    
     
     {-
     (gp_stdin_rd_fd, gp_stdin_wr_fd) <- createPipe

@@ -14,8 +14,11 @@ Flag Tests
 
 Library
         Exposed-Modules:        Text.EditDistance
-        Build-Depends:          base, array >= 0.1, random >= 1.0
-        Ghc-Options:            -O2 -Wall -fno-warn-orphans
+        Other-Modules:          Text.EditDistance.EditCosts
+                                Text.EditDistance.SquareSTUArray
+                                Text.EditDistance.Bits
+        Build-Depends:          base, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
+        Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans
 
 Executable edit-distance-tests
         Main-Is:                Text/EditDistance/Tests.hs
@@ -23,7 +26,7 @@ Executable edit-distance-tests
         Extensions:             PatternGuards, PatternSignatures, 
                                 RankNTypes, ExistentialQuantification,
                                 ScopedTypeVariables
-        Ghc-Options:            -O2 -Wall -fno-warn-orphans
+        Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans
         
         if !flag(tests)
                 Buildable:      False
@@ -32,7 +35,7 @@ Executable edit-distance-benchmark
         Main-Is:                Text/EditDistance/Benchmark.hs
         Build-Depends:          base, array >= 0.1, random >= 1.0, old-time >= 1.0,
                                 parallel >= 1.0, process >= 1.0, unix >= 2.3
-        Ghc-Options:            -O2 -Wall -fno-warn-orphans -threaded
+        Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans -threaded
         
         if !flag(tests)
                 Buildable:      False
