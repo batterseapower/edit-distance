@@ -16,7 +16,7 @@ levenshteinDistance :: EditCosts -> String -> String -> Int
 levenshteinDistance costs str1 str2 = runST (levenshteinDistanceST costs str1 str2)
 
 levenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
-levenshteinDistanceST costs str1 str2 = do
+levenshteinDistanceST !costs str1 str2 = do
     -- Create string arrays
     str1_array <- stringToArray str1 str1_len
     str2_array <- stringToArray str2 str2_len
@@ -66,7 +66,7 @@ restrictedDamerauLevenshteinDistance :: EditCosts -> String -> String -> Int
 restrictedDamerauLevenshteinDistance costs str1 str2 = runST (restrictedDamerauLevenshteinDistanceST costs str1 str2)
 
 restrictedDamerauLevenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
-restrictedDamerauLevenshteinDistanceST costs str1 str2 = do
+restrictedDamerauLevenshteinDistanceST !costs str1 str2 = do
     -- Create string arrays
     str1_array <- stringToArray str1 str1_len
     str2_array <- stringToArray str2 str2_len
@@ -164,16 +164,7 @@ standardCosts !costs !row_char !col_char !cost_left !cost_left_up !cost_up = del
 
 {-# INLINE stringToArray #-}
 stringToArray :: String -> Int -> ST s (STUArray s Int Char)
-stringToArray str str_length = do
+stringToArray str !str_length = do
     array <- newArray_ (1, str_length)
     forM_ (zip [1..] str) (uncurry (writeArray array))
     return array
-
-{-
-showArray :: STUArray s (Int, Int) Int -> ST s String
-showArray array = do
-    ((il, jl), (iu, ju)) <- getBounds array
-    flip (flip foldM "") [(i, j) | i <- [il..iu], j <- [jl.. ju]] $ \rest (i, j) -> do
-        elt <- readArray array (i, j)
-        return $ rest ++ show (i, j) ++ ": " ++ show elt ++ ", "
--}
