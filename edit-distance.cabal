@@ -19,6 +19,7 @@ Library
                                 Text.EditDistance.SquareSTUArray
                                 Text.EditDistance.STUArray
                                 Text.EditDistance.Bits
+                                Text.EditDistance.MonadUtilities
         Build-Depends:          base, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
         Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans
 

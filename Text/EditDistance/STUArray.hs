@@ -5,6 +5,7 @@ module Text.EditDistance.STUArray (
     ) where
 
 import Text.EditDistance.EditCosts
+import Text.EditDistance.MonadUtilities
 
 import Control.Monad
 import Control.Monad.ST
@@ -34,7 +35,7 @@ levenshteinDistanceST !costs !str1_len !str2_len str1 str2 = do
     cost_row' <- newArray_ (0, str1_len) :: ST s (STUArray s Int Int)
     
      -- Fill out the first row (j = 0)
-    forM_ [1..str1_len] $ \i -> writeArray cost_row i (deletionCost costs * i)
+    loopM_ 1 str1_len $ \i -> writeArray cost_row i (deletionCost costs * i)
     
     -- Fill out the remaining rows (j >= 1)
     (final_row, _) <- foldM (levenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (cost_row, cost_row') [1..str2_len]
@@ -51,7 +52,7 @@ levenshteinDistanceSTRowWorker !costs !str1_len !str1_array !str2_array (!cost_r
     writeArray cost_row' 0 here
     
     -- Fill the remaining elements of the row (i >= 1)
-    forM_ [1..str1_len] (colWorker row_char)
+    loopM_ 1 str1_len (colWorker row_char)
     
     return (cost_row', cost_row)
   where
@@ -86,7 +87,7 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
     cost_row <- newArray_ (0, str1_len) :: ST s (STUArray s Int Int)
     
     -- Fill out the first row (j = 0)
-    forM_ [1..str1_len] $ \i -> writeArray cost_row i (deletionCost costs * i)
+    loopM_ 1 str1_len $ \i -> writeArray cost_row i (deletionCost costs * i)
     
     if (str2_len == 0)
       then readArray cost_row str1_len
@@ -103,7 +104,7 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
         writeArray cost_row' 0 zero
 
         -- Fill the remaining elements of the row (i >= 1)
-        forM_ [1..str1_len] (firstRowColWorker str1_array row_char cost_row cost_row')
+        loopM_ 1 str1_len (firstRowColWorker str1_array row_char cost_row cost_row')
         
         -- Fill out the remaining rows (j >= 2)
         (_, final_row, _, _) <- foldM (restrictedDamerauLevenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (cost_row, cost_row', cost_row'', row_char) [2..str2_len]
@@ -140,7 +141,7 @@ restrictedDamerauLevenshteinDistanceSTRowWorker !costs !str1_len !str1_array !st
         writeArray cost_row'' 1 one
         
         -- Fill the remaining elements of the row (i >= 2)
-        forM_ [2..str1_len] (colWorker row_char)
+        loopM_ 2 str1_len (colWorker row_char)
     
     return (cost_row', cost_row'', cost_row, row_char)
   where
