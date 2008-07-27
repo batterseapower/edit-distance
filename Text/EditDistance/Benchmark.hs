@@ -18,7 +18,7 @@ import Control.Parallel.Strategies      ( NFData, rnf )
 
 sTRING_SIZE_STEP, mAX_STRING_SIZE :: Int
 sTRING_SIZE_STEP = 3
-mAX_STRING_SIZE = 21
+mAX_STRING_SIZE = 42
 
 time :: IO a -> IO Float
 time action = do 
