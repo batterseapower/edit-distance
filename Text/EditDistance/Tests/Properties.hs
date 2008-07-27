@@ -23,6 +23,7 @@ tests = [ TestGroup "Levenshtein Distance (SquareSTUArray)" sqstu_levenshteinDis
         , TestGroup "Restricted Damerau-Levenshtein Distance (Bits)" bits_restrictedDamerauLevenshteinDistanceTests
         , TestGroup "Levenshtein Distance Crosschecks" levenshteinDistanceCrosscheckTests
         , TestGroup "Restricted Damerau-Levenshtein Distance Crosschecks" restrictedDamerauLevenshteinDistanceCrosscheckTests
+        --, TestGroup "Levenshtein Distance Cutoff (Bits)" bits_levenshteinDistanceCutoffTests
         ]
   where
     sqstu_levenshteinDistanceTests                  = standardDistanceTests SquareSTUArray.levenshteinDistance                  interestingCosts (undefined :: BasicEditOperation)
@@ -31,6 +32,8 @@ tests = [ TestGroup "Levenshtein Distance (SquareSTUArray)" sqstu_levenshteinDis
     stu_restrictedDamerauLevenshteinDistanceTests   = standardDistanceTests STUArray.restrictedDamerauLevenshteinDistance       interestingCosts (undefined :: ExtendedEditOperation)
     bits_levenshteinDistanceTests                   = standardDistanceTests (const Bits.levenshteinDistance)                    defaultEditCosts (undefined :: BasicEditOperation)
     bits_restrictedDamerauLevenshteinDistanceTests  = standardDistanceTests (const Bits.restrictedDamerauLevenshteinDistance)   defaultEditCosts (undefined :: ExtendedEditOperation)
+    
+    --bits_levenshteinDistanceCutoffTests = [ Property "Cutoff vs. Non-Cutoff" (forAll arbitrary (\cutoff -> distanceEqIfBelowProperty cutoff (Bits.levenshteinDistanceCutoff cutoff) Bits.levenshteinDistance defaultEditCosts (undefined :: BasicEditOperation))) ]
     
     levenshteinDistanceCrosscheckTests 
       = crossCheckTests [ ("SquareSTUArray", SquareSTUArray.levenshteinDistance defaultEditCosts)
@@ -56,10 +59,16 @@ interestingCosts = EditCosts {
 
 crossCheckTests :: forall op. (EditOperation op, Show op) => [(String, String -> String -> Int)] -> op -> [Test]
 crossCheckTests named_distances _op_dummy
-  = [ Property (name1 ++ " vs. " ++ name2) (\(MkEditedString old new _ :: EditedString op) -> distance1 old new == distance2 old new)
+  = [ Property (name1 ++ " vs. " ++ name2) (distanceEqProperty distance1 distance2 _op_dummy)
     | (ix1, (name1, distance1)) <- enumerated_named_distances, (ix2, (name2, distance2)) <- enumerated_named_distances, ix2 > ix1 ]
   where
     enumerated_named_distances = [(1 :: Int)..] `zip` named_distances
+
+distanceEqProperty :: (String -> String -> Int) -> (String -> String -> Int) -> op -> EditedString op -> Bool
+distanceEqProperty distance1 distance2 _op_dummy (MkEditedString old new _) = distance1 old new == distance2 old new
+
+distanceEqIfBelowProperty :: (EditOperation op) => Int -> (String -> String -> Int) -> (String -> String -> Int) -> EditCosts -> op -> EditedString op -> Property
+distanceEqIfBelowProperty cutoff distance1 distance2 costs _op_dummy (MkEditedString old new ops) = (editCost costs ops <= cutoff) ==> distance1 old new == distance2 old new
 
 standardDistanceTests :: forall op. (EditOperation op, Show op) => (EditCosts -> String -> String -> Int) -> EditCosts -> op -> [Test]
 standardDistanceTests distance costs _op_dummy

@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards, ScopedTypeVariables, BangPatterns #-}
 
 module Text.EditDistance.SquareSTUArray (
-        levenshteinDistance, restrictedDamerauLevenshteinDistance
+        levenshteinDistance, levenshteinDistanceWithLengths, restrictedDamerauLevenshteinDistance, restrictedDamerauLevenshteinDistanceWithLengths
     ) where
 
 import Text.EditDistance.EditCosts
@@ -13,10 +13,16 @@ import Data.Array.MArray
 
 
 levenshteinDistance :: EditCosts -> String -> String -> Int
-levenshteinDistance costs str1 str2 = runST (levenshteinDistanceST costs str1 str2)
+levenshteinDistance !costs str1 str2 = levenshteinDistanceWithLengths costs str1_len str2_len str1 str2
+  where
+    str1_len = length str1
+    str2_len = length str2
 
-levenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
-levenshteinDistanceST !costs str1 str2 = do
+levenshteinDistanceWithLengths :: EditCosts -> Int -> Int -> String -> String -> Int
+levenshteinDistanceWithLengths !costs !str1_len !str2_len str1 str2 = runST (levenshteinDistanceST costs str1_len str2_len str1 str2)
+
+levenshteinDistanceST :: EditCosts -> Int -> Int -> String -> String -> ST s Int
+levenshteinDistanceST !costs !str1_len !str2_len str1 str2 = do
     -- Create string arrays
     str1_array <- stringToArray str1 str1_len
     str2_array <- stringToArray str2 str2_len
@@ -44,16 +50,19 @@ levenshteinDistanceST !costs str1 str2 = do
     
     -- Return an actual answer
     readArray cost_array (str1_len, str2_len)
+
+
+restrictedDamerauLevenshteinDistance :: EditCosts -> String -> String -> Int
+restrictedDamerauLevenshteinDistance costs str1 str2 = restrictedDamerauLevenshteinDistanceWithLengths costs str1_len str2_len str1 str2
   where
     str1_len = length str1
     str2_len = length str2
 
+restrictedDamerauLevenshteinDistanceWithLengths :: EditCosts -> Int -> Int -> String -> String -> Int
+restrictedDamerauLevenshteinDistanceWithLengths costs str1_len str2_len str1 str2 = runST (restrictedDamerauLevenshteinDistanceST costs str1_len str2_len str1 str2)
 
-restrictedDamerauLevenshteinDistance :: EditCosts -> String -> String -> Int
-restrictedDamerauLevenshteinDistance costs str1 str2 = runST (restrictedDamerauLevenshteinDistanceST costs str1 str2)
-
-restrictedDamerauLevenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
-restrictedDamerauLevenshteinDistanceST !costs str1 str2 = do
+restrictedDamerauLevenshteinDistanceST :: EditCosts -> Int -> Int -> String -> String -> ST s Int
+restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
     -- Create string arrays
     str1_array <- stringToArray str1 str1_len
     str2_array <- stringToArray str2 str2_len
@@ -108,9 +117,6 @@ restrictedDamerauLevenshteinDistanceST !costs str1 str2 = do
     
     -- Return an actual answer
     readArray cost_array (str1_len, str2_len)
-  where
-    str1_len = length str1
-    str2_len = length str2
 
 
 {-# INLINE standardCosts #-}

@@ -11,6 +11,7 @@ import System.Exit
 import System.Time      ( ClockTime(..), getClockTime )
 import System.Random
 import System.Process
+import Data.List
 import Control.Monad
 import Control.Exception
 --import Control.Concurrent       ( forkIO, threadDelay )
@@ -18,7 +19,7 @@ import Control.Parallel.Strategies      ( NFData, rnf )
 
 sTRING_SIZE_STEP, mAX_STRING_SIZE :: Int
 sTRING_SIZE_STEP = 3
-mAX_STRING_SIZE = 42
+mAX_STRING_SIZE = 108
 
 time :: IO a -> IO Float
 time action = do 
@@ -55,29 +56,32 @@ joinOnKey xs ys = [(x_a, (x_b, y_c)) | (x_a, x_b) <- xs, (y_a, y_c) <- ys, x_a =
 gnuPlotScript :: String
 gnuPlotScript = "set term postscript eps enhanced color\n\
 \set output \"data.ps\"\n\
-\unset key\n\
+\#unset key\n\
 \set dgrid3d\n\
 \set hidden3d\n\
-\set pm3d map\n\
-\splot \"data.plot\" using 1:2:3\n\
+\#set pm3d map\n\
+\#splot \"data.plot\" using 1:2:3\n\
+\splot \"data.plot\" using 1:2:3 title \"Bits\" with lines, \"data.plot\" using 1:2:4 title \"STUArray\" with lines, \"data.plot\" using 1:2:5 title \"SquareSTUArray\" with lines\n\
 \quit\n"
 
-toGnuPlotFormat :: (Show a, Show b, Show c) => [((a, b), c)] -> String
+toGnuPlotFormat :: (Show a, Show b, Show c) => [((a, b), [c])] -> String
 toGnuPlotFormat samples = unlines (header : map sampleToGnuPlotFormat samples)
   where
-    header = "#\tX\tY\tZ"
-    sampleToGnuPlotFormat ((a, b), c) = concat ["\t", show a, "\t", show b, "\t", show c]
+    first_cs = snd $ head samples
+    header = "#\tX\tY" ++ concat (replicate (length first_cs) "\tZ")
+    sampleToGnuPlotFormat ((a, b), cs) = concat $ intersperse "\t" $ [show a, show b] ++ map show cs
 
 main :: IO ()
 main = do
     let sample_range = [(i, j) | i <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]
                                , j <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]]
-    sqstu_samples <- augment (sample $ SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts) sample_range
-    stu_samples <- augment (sample $ STUArray.restrictedDamerauLevenshteinDistance defaultEditCosts) sample_range
-    let paired_samples = sqstu_samples `joinOnKey` stu_samples
-        diff_samples = [((i, j), left_time - right_time) | ((i, j), (left_time, right_time)) <- paired_samples]
+    bits_samples  <- augment (sample $ Bits.levenshteinDistance) sample_range
+    sqstu_samples <- augment (sample $ SquareSTUArray.levenshteinDistance defaultEditCosts) sample_range
+    stu_samples   <- augment (sample $ STUArray.levenshteinDistance defaultEditCosts) sample_range
+    let paired_samples = bits_samples `joinOnKey` (stu_samples `joinOnKey` sqstu_samples)
+        listified_samples = [((i, j), [a, b, c]) | ((i, j), (a, (b, c))) <- paired_samples]
     
-    writeFile "data.plot" (toGnuPlotFormat diff_samples)
+    writeFile "data.plot" (toGnuPlotFormat listified_samples)
     writeFile "plot.script" gnuPlotScript
     
     (_inp, _outp, _err, gp_pid) <- runInteractiveCommand "(cat plot.script | gnuplot); RETCODE=$?; rm plot.script; exit $RETCODE"
