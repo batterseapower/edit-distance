@@ -90,12 +90,11 @@ restrictedDamerauLevenshteinDistanceST !costs str1 str2 = do
         row_char <- readArray str2_array 1
 
         -- Initialize the first element of the row (i = 0)
-        zero_up <- readArray cost_row 0
         let zero = insertionCost costs
         writeArray cost_row' 0 zero
 
         -- Fill the remaining elements of the row (i >= 1)
-        foldM (firstRowColWorker str1_array row_char cost_row cost_row') (zero, zero_up) [1..str1_len]
+        forM_ [1..str1_len] (firstRowColWorker str1_array row_char cost_row cost_row')
         
         -- Fill out the remaining rows (j >= 2)
         (_, final_row, _, _) <- foldM (restrictedDamerauLevenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (cost_row, cost_row', cost_row'', row_char) [2..str2_len]
@@ -106,13 +105,14 @@ restrictedDamerauLevenshteinDistanceST !costs str1 str2 = do
     str1_len = length str1
     str2_len = length str2
     
-    firstRowColWorker !str1_array !row_char !cost_row !cost_row' (!left, !left_up) !i = do
+    firstRowColWorker !str1_array !row_char !cost_row !cost_row' !i = do
         col_char <- readArray str1_array i
         
-        here_up <- readArray cost_row i
+        left_up <- readArray cost_row  (i - 1)
+        left    <- readArray cost_row' (i - 1)
+        here_up <- readArray cost_row  i
         let here = standardCosts costs row_char col_char left left_up here_up
         writeArray cost_row' i here
-        return (here, here_up)
 
 restrictedDamerauLevenshteinDistanceSTRowWorker :: EditCosts -> Int
                                                 -> STUArray s Int Char -> STUArray s Int Char -- String arrays
