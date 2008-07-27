@@ -5,7 +5,7 @@ module Text.EditDistance (
 
 import Text.EditDistance.EditCosts
 import qualified Text.EditDistance.Bits as Bits
-import qualified Text.EditDistance.STUArray as STUArray ()
+import qualified Text.EditDistance.STUArray as STUArray
 import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 
 -- | Find the Levenshtein edit distance between two strings.  That is to say, the number of deletion,
@@ -15,7 +15,7 @@ import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 levenshteinDistance :: EditCosts -> String -> String -> Int
 levenshteinDistance costs 
   | costs == defaultEditCosts = Bits.levenshteinDistance
-  | otherwise                 = SquareSTUArray.levenshteinDistance costs
+  | otherwise                 = STUArray.levenshteinDistance costs
 
 -- | Find the "restricted" Damerau-Levenshtein edit distance between two strings.  This algorithm calculates the cost of
 -- the so-called optimal string alignment, which does not always equal the appropriate edit distance. The cost of the optimal 

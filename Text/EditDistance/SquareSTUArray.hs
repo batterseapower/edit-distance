@@ -18,8 +18,8 @@ levenshteinDistance costs str1 str2 = runST (levenshteinDistanceST costs str1 st
 levenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
 levenshteinDistanceST !costs !str1 !str2 = do
     -- Create string arrays
-    str1_array <- stringToArray str1
-    str2_array <- stringToArray str2
+    str1_array <- stringToArray str1 str1_len
+    str2_array <- stringToArray str2 str2_len
     
     -- Create array of costs. Say we index it by (i, j) where i is the column index and j the row index.
     -- Rows correspond to characters of str2 and columns to characters of str1.
@@ -55,8 +55,8 @@ restrictedDamerauLevenshteinDistance costs str1 str2 = runST (restrictedDamerauL
 restrictedDamerauLevenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
 restrictedDamerauLevenshteinDistanceST !costs !str1 !str2 = do
     -- Create string arrays
-    str1_array <- stringToArray str1
-    str2_array <- stringToArray str2
+    str1_array <- stringToArray str1 str1_len
+    str2_array <- stringToArray str2 str2_len
     
     -- Create array of costs. Say we index it by (i, j) where i is the column index and j the row index.
     -- Rows correspond to characters of str2 and columns to characters of str1.
@@ -121,9 +121,10 @@ standardCosts !costs !cost_array !row_char !col_char (!i, !j) = do
     subst_cost     <- fmap (+ if row_char == col_char then 0 else substitutionCost costs) $ readArray cost_array (i - 1, j - 1)
     return $ deletion_cost `min` insertion_cost `min` subst_cost
 
-stringToArray :: String -> ST s (STUArray s Int Char)
-stringToArray str = do
-    array <- newArray_ (1, length str)
+{-# INLINE stringToArray #-}
+stringToArray :: String -> Int -> ST s (STUArray s Int Char)
+stringToArray str str_len = do
+    array <- newArray_ (1, str_len)
     forM_ (zip [1..] str) (uncurry (writeArray array))
     return array
 
