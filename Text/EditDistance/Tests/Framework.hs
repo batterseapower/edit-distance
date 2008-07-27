@@ -22,14 +22,12 @@ instance Arbitrary Char where
 class Arbitrary ops => EditOperation ops where
     edit :: Arbitrary a => [a] -> ops -> Gen [a]
     editCost :: EditCosts -> ops -> Int
-    isTransposition :: ops -> Bool
-    transpositionRestricted :: ops -> Bool
+    containsTransposition :: ops -> Bool
 
 instance EditOperation op => EditOperation [op] where
    edit = foldM edit
    editCost costs = sum . map (editCost costs)
-   isTransposition = any isTransposition
-   transpositionRestricted ops = all (\(isLast, op) -> isLast || not (isTransposition op)) ((True:repeat False) `zip` (reverse ops))
+   containsTransposition = any containsTransposition
 
 
 data EditedString ops = MkEditedString {
@@ -93,10 +91,8 @@ instance EditOperation ExtendedEditOperation where
     editCost costs Substitution  = substitutionCost costs
     editCost costs Transposition = transpositionCost costs
 
-    isTransposition Transposition = True
-    isTransposition _             = False
-
-    transpositionRestricted _ = True
+    containsTransposition Transposition = True
+    containsTransposition _             = False
 
 
 -- This all really sucks but I can't think of something better right now
@@ -112,5 +108,4 @@ instance Arbitrary BasicEditOperation where
 instance EditOperation BasicEditOperation where
     edit str (MkBasic op) = edit str op
     editCost costs (MkBasic op) = editCost costs op
-    isTransposition _ = False
-    transpositionRestricted _ = True
+    containsTransposition _ = False

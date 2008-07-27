@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards, ScopedTypeVariables, BangPatterns #-}
 
 module Text.EditDistance.SquareSTUArray (
         levenshteinDistance, restrictedDamerauLevenshteinDistance
@@ -16,7 +16,7 @@ levenshteinDistance :: EditCosts -> String -> String -> Int
 levenshteinDistance costs str1 str2 = runST (levenshteinDistanceST costs str1 str2)
 
 levenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
-levenshteinDistanceST costs str1 str2 = do
+levenshteinDistanceST !costs !str1 !str2 = do
     -- Create string arrays
     str1_array <- stringToArray str1
     str2_array <- stringToArray str2
@@ -26,17 +26,17 @@ levenshteinDistanceST costs str1 str2 = do
     cost_array <- newArray_ ((0, 0), (str1_len, str2_len)) :: ST s (STUArray s (Int, Int) Int)
     
      -- Fill out the first row (j = 0)
-    forM_ [1..str1_len] $ \i -> writeArray cost_array (i, 0) (deletionCost costs * i)
+    forM_ [1..str1_len] $ \(!i) -> writeArray cost_array (i, 0) (deletionCost costs * i)
     
     -- Fill the remaining rows (j >= 1)
-    forM_ [1..str2_len] (\j -> do
+    forM_ [1..str2_len] (\(!j) -> do
         row_char <- readArray str2_array j
         
         -- Initialize the first element of the row (i = 0)
         writeArray cost_array (0, j) (insertionCost costs * j)
         
         -- Fill the remaining elements of the row (i >= 1)
-        forM_ [1..str1_len] (\i -> do
+        forM_ [1..str1_len] (\(!i) -> do
             col_char <- readArray str1_array i
             
             cost <- standardCosts costs cost_array row_char col_char (i, j)
@@ -53,7 +53,7 @@ restrictedDamerauLevenshteinDistance :: EditCosts -> String -> String -> Int
 restrictedDamerauLevenshteinDistance costs str1 str2 = runST (restrictedDamerauLevenshteinDistanceST costs str1 str2)
 
 restrictedDamerauLevenshteinDistanceST :: EditCosts -> String -> String -> ST s Int
-restrictedDamerauLevenshteinDistanceST costs str1 str2 = do
+restrictedDamerauLevenshteinDistanceST !costs !str1 !str2 = do
     -- Create string arrays
     str1_array <- stringToArray str1
     str2_array <- stringToArray str2
@@ -63,7 +63,7 @@ restrictedDamerauLevenshteinDistanceST costs str1 str2 = do
     cost_array <- newArray_ ((0, 0), (str1_len, str2_len)) :: ST s (STUArray s (Int, Int) Int)
     
      -- Fill out the first row (j = 0)
-    forM_ [1..str1_len] $ \i -> writeArray cost_array (i, 0) (deletionCost costs * i)
+    forM_ [1..str1_len] $ \(!i) -> writeArray cost_array (i, 0) (deletionCost costs * i)
     
     -- Fill out the second row (j = 1)
     when (str2_len > 0) $ do
@@ -73,14 +73,14 @@ restrictedDamerauLevenshteinDistanceST costs str1 str2 = do
         writeArray cost_array (0, 1) (insertionCost costs)
         
         -- Initialize the remaining elements of the row (i >= 1)
-        forM_ [1..str1_len] $ \i -> do
+        forM_ [1..str1_len] $ \(!i) -> do
             col_char <- readArray str1_array i
             
             cost <- standardCosts costs cost_array initial_row_char col_char (i, 1)
             writeArray cost_array (i, 1) cost
     
     -- Fill the remaining rows (j >= 2)
-    forM_ [2..str2_len] (\j -> do
+    forM_ [2..str2_len] (\(!j) -> do
         row_char <- readArray str2_array j
         prev_row_char <- readArray str2_array (j - 1)
         
@@ -95,7 +95,7 @@ restrictedDamerauLevenshteinDistanceST costs str1 str2 = do
             writeArray cost_array (1, j) cost
         
         -- Fill the remaining elements of the row (i >= 2)
-        forM_ [2..str1_len] (\i -> do
+        forM_ [2..str1_len] (\(!i) -> do
             col_char <- readArray str1_array i
             prev_col_char <- readArray str1_array (i - 1)
             
@@ -115,7 +115,7 @@ restrictedDamerauLevenshteinDistanceST costs str1 str2 = do
 
 {-# INLINE standardCosts #-}
 standardCosts :: EditCosts -> STUArray s (Int, Int) Int -> Char -> Char -> (Int, Int) -> ST s Int
-standardCosts costs cost_array row_char col_char (i, j) = do
+standardCosts !costs !cost_array !row_char !col_char (!i, !j) = do
     deletion_cost  <- fmap (+ (deletionCost costs))  $ readArray cost_array (i - 1, j)
     insertion_cost <- fmap (+ (insertionCost costs)) $ readArray cost_array (i, j - 1)
     subst_cost     <- fmap (+ if row_char == col_char then 0 else substitutionCost costs) $ readArray cost_array (i - 1, j - 1)

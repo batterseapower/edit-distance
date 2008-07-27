@@ -4,6 +4,7 @@ module Text.EditDistance.Tests.Properties (tests) where
 
 import Text.EditDistance.EditCosts
 import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
+import qualified Text.EditDistance.STUArray as STUArray
 import qualified Text.EditDistance.Bits as Bits
 import Text.EditDistance.Tests.Framework
 
@@ -11,24 +12,34 @@ import Test.QuickCheck
 
 
 tests :: [Test]
-tests = [ TestGroup "Levenshtein Distance (SquareSTUArray)" stu_levenshteinDistanceTests
-        , TestGroup "Restricted Damerau-Levenshtein Distance (SquareSTUArray)" stu_restrictedDamerauLevenshteinDistanceTests
+tests = [ TestGroup "Levenshtein Distance (SquareSTUArray)" sqstu_levenshteinDistanceTests
+        , TestGroup "Restricted Damerau-Levenshtein Distance (SquareSTUArray)" sqstu_restrictedDamerauLevenshteinDistanceTests
+        , TestGroup "Levenshtein Distance (STUArray)" stu_levenshteinDistanceTests
+        , TestGroup "Restricted Damerau-Levenshtein Distance (STUArray)" stu_restrictedDamerauLevenshteinDistanceTests
         , TestGroup "Levenshtein Distance (Bits)" bits_levenshteinDistanceTests
         , TestGroup "Restricted Damerau-Levenshtein Distance (Bits)" bits_restrictedDamerauLevenshteinDistanceTests
-        , TestGroup "Levenshtein Distance Crosschecks" levenshteinDistanceCrosschecks
-        , TestGroup "Restricted Damerau-Levenshtein Distance Crosschecks" restrictedDamerauLevenshteinDistanceCrosschecks
+        , TestGroup "Levenshtein Distance Crosschecks" levenshteinDistanceCrosscheckTests
+        , TestGroup "Restricted Damerau-Levenshtein Distance Crosschecks" restrictedDamerauLevenshteinDistanceCrosscheckTests
         ]
   where
-    stu_levenshteinDistanceTests                  = standardDistanceTests  SquareSTUArray.levenshteinDistance                  interestingCosts (undefined :: BasicEditOperation)
-    stu_restrictedDamerauLevenshteinDistanceTests = standardDistanceTests  SquareSTUArray.restrictedDamerauLevenshteinDistance interestingCosts (undefined :: ExtendedEditOperation)
-    bits_levenshteinDistanceTests                  = standardDistanceTests (const Bits.levenshteinDistance)                    defaultEditCosts (undefined :: BasicEditOperation)
-    bits_restrictedDamerauLevenshteinDistanceTests = standardDistanceTests (const Bits.restrictedDamerauLevenshteinDistance)   defaultEditCosts (undefined :: ExtendedEditOperation)
-    levenshteinDistanceCrosschecks = [ crossCheckTest "SquareSTUArray" (SquareSTUArray.levenshteinDistance defaultEditCosts)
-                                                      "Bits"           Bits.levenshteinDistance
-                                                      (undefined :: BasicEditOperation) ]
-    restrictedDamerauLevenshteinDistanceCrosschecks = [ crossCheckTest "SquareSTUArray" (SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts)
-                                                                       "Bits"           Bits.restrictedDamerauLevenshteinDistance
-                                                                       (undefined :: ExtendedEditOperation) ]
+    sqstu_levenshteinDistanceTests                  = standardDistanceTests SquareSTUArray.levenshteinDistance                  interestingCosts (undefined :: BasicEditOperation)
+    sqstu_restrictedDamerauLevenshteinDistanceTests = standardDistanceTests SquareSTUArray.restrictedDamerauLevenshteinDistance interestingCosts (undefined :: ExtendedEditOperation)
+    stu_levenshteinDistanceTests                    = standardDistanceTests STUArray.levenshteinDistance                        interestingCosts (undefined :: BasicEditOperation)
+    stu_restrictedDamerauLevenshteinDistanceTests   = standardDistanceTests STUArray.restrictedDamerauLevenshteinDistance       interestingCosts (undefined :: ExtendedEditOperation)
+    bits_levenshteinDistanceTests                   = standardDistanceTests (const Bits.levenshteinDistance)                    defaultEditCosts (undefined :: BasicEditOperation)
+    bits_restrictedDamerauLevenshteinDistanceTests  = standardDistanceTests (const Bits.restrictedDamerauLevenshteinDistance)   defaultEditCosts (undefined :: ExtendedEditOperation)
+    
+    levenshteinDistanceCrosscheckTests 
+      = crossCheckTests [ ("SquareSTUArray", SquareSTUArray.levenshteinDistance defaultEditCosts)
+                        , ("STUArray",       STUArray.levenshteinDistance defaultEditCosts)
+                        , ("Bits",           Bits.levenshteinDistance) ]
+                        (undefined :: BasicEditOperation)
+    
+    restrictedDamerauLevenshteinDistanceCrosscheckTests 
+      = crossCheckTests [ ("SquareSTUArray", SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts)
+                        , ("STUArray",       STUArray.restrictedDamerauLevenshteinDistance defaultEditCosts)
+                        , ("Bits",           Bits.restrictedDamerauLevenshteinDistance) ]
+                        (undefined :: ExtendedEditOperation)
 
 
 interestingCosts :: EditCosts
@@ -40,9 +51,12 @@ interestingCosts = EditCosts {
 }
 
 
-crossCheckTest :: forall op. (EditOperation op, Show op) => String -> (String -> String -> Int) -> String -> (String -> String -> Int) -> op -> Test
-crossCheckTest name1 distance1 name2 distance2 _op_dummy
-  = Property (name1 ++ " vs. " ++ name2) (\(MkEditedString old new _ :: EditedString op) -> distance1 old new == distance2 old new)
+crossCheckTests :: forall op. (EditOperation op, Show op) => [(String, String -> String -> Int)] -> op -> [Test]
+crossCheckTests named_distances _op_dummy
+  = [ Property (name1 ++ " vs. " ++ name2) (\(MkEditedString old new _ :: EditedString op) -> distance1 old new == distance2 old new)
+    | (ix1, (name1, distance1)) <- enumerated_named_distances, (ix2, (name2, distance2)) <- enumerated_named_distances, ix2 > ix1 ]
+  where
+    enumerated_named_distances = [(1 :: Int)..] `zip` named_distances
 
 standardDistanceTests :: forall op. (EditOperation op, Show op) => (EditCosts -> String -> String -> Int) -> EditCosts -> op -> [Test]
 standardDistanceTests distance costs _op_dummy
@@ -64,4 +78,4 @@ standardDistanceTests distance costs _op_dummy
     prop_single_op_cost_is_distance (MkEditedString old new ops :: EditedString op)
       = (length old > 2) ==> testableDistance old new == editCost costs ops || old == new
     prop_combined_op_cost_at_least_distance (MkEditedString old new ops :: EditedString [op])
-      = transpositionRestricted ops ==> testableDistance old new <= editCost costs ops
+      = not (containsTransposition ops) ==> testableDistance old new <= editCost costs ops

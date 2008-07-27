@@ -5,6 +5,7 @@ module Text.EditDistance (
 
 import Text.EditDistance.EditCosts
 import qualified Text.EditDistance.Bits as Bits
+import qualified Text.EditDistance.STUArray as STUArray ()
 import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 
 -- | Find the Levenshtein edit distance between two strings.  That is to say, the number of deletion,
