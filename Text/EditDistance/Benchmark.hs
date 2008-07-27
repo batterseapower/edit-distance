@@ -2,6 +2,7 @@ module Main where
 
 import Text.EditDistance.EditCosts
 import qualified Text.EditDistance.Bits as Bits
+import qualified Text.EditDistance.STUArray as STUArray
 import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 
 import System.IO
@@ -15,15 +16,16 @@ import Control.Exception
 --import Control.Concurrent       ( forkIO, threadDelay )
 import Control.Parallel.Strategies      ( NFData, rnf )
 
-mAX_STRING_SIZE :: Int
-mAX_STRING_SIZE = 20
+sTRING_SIZE_STEP, mAX_STRING_SIZE :: Int
+sTRING_SIZE_STEP = 3
+mAX_STRING_SIZE = 21
 
 time :: IO a -> IO Float
 time action = do 
     TOD s1 ps1 <- getClockTime
     action
     TOD s2 ps2 <- getClockTime
-    return $ (fromIntegral (s2 - s1) + (fromIntegral (ps2 - ps1) / 10^12))
+    return $ (fromIntegral (s2 - s1) + (fromIntegral (ps2 - ps1) / 10^(12 :: Int)))
 
 augment :: Monad m => (a -> m b) -> [a] -> m [(a, b)]
 augment fx xs = liftM (zip xs) $ mapM fx xs
@@ -68,12 +70,12 @@ toGnuPlotFormat samples = unlines (header : map sampleToGnuPlotFormat samples)
 
 main :: IO ()
 main = do
-    let sample_range = [(i, j) | i <- [0..mAX_STRING_SIZE]
-                               , j <- [0..mAX_STRING_SIZE]]
-    stu_samples <- augment (sample $ SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts) sample_range
-    bits_samples <- augment (sample $ Bits.restrictedDamerauLevenshteinDistance) sample_range
-    let paired_samples = joinOnKey stu_samples bits_samples
-        diff_samples = [((i, j), stu_time - bits_time) | ((i, j), (stu_time, bits_time)) <- paired_samples]
+    let sample_range = [(i, j) | i <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]
+                               , j <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]]
+    sqstu_samples <- augment (sample $ SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts) sample_range
+    stu_samples <- augment (sample $ STUArray.restrictedDamerauLevenshteinDistance defaultEditCosts) sample_range
+    let paired_samples = sqstu_samples `joinOnKey` stu_samples
+        diff_samples = [((i, j), left_time - right_time) | ((i, j), (left_time, right_time)) <- paired_samples]
     
     writeFile "data.plot" (toGnuPlotFormat diff_samples)
     writeFile "plot.script" gnuPlotScript
@@ -83,40 +85,3 @@ main = do
     case gp_exit_code of
             ExitSuccess -> putStrLn "Plotted at 'data.ps'"
             ExitFailure err_no -> putStrLn $ "Failed! Error code " ++ show err_no
-    
-    
-    
-    {-
-    (gp_stdin_rd_fd, gp_stdin_wr_fd) <- createPipe
-    gp_stdin_rd <- fdToHandle gp_stdin_rd_fd
-    gp_stdin_wr <- fdToHandle gp_stdin_wr_fd
-    
-    {-
-    export AQUATERM_REPORT_TIMING=1
-export AQUATERM_PATH=
-export GNUTERMAPP=
-export GNUTERM=aqua
-    -}
-    {-
-    let env = [ ("AQUATERM_REPORT_TIMING", "1")
-              , ("AQUATERM_PATH", "/Applications/AquaTerm.app")
-              , ("GNUTERMAPP", "/Applications/AquaTerm.app")
-              , ("GNUTERM", "aqua")
-              ]-}
-    gp_pid <- runProcess "tee" [] Nothing Nothing  (Just gp_stdin_rd) Nothing Nothing --(Just gp_stdin_rd) (Just stdout) (Just stderr)
-    
-    --forkIO ()
-    hPutStr gp_stdin_wr gnuPlotScript
-    --hPutStr gp_stdin_wr "ls\n"
-    --threadDelay 20000000
-    gp_exit_code <- waitForProcess gp_pid
-    case gp_exit_code of
-            ExitSuccess -> putStrLn "Plotted at 'data.ps'"
-            ExitFailure err_no -> putStrLn $ "Failed! Error code " ++ show err_no
-    
-    --hClose gp_stdin_rd
-    hClose gp_stdin_wr
-    
-    --closeFd gp_stdin_rd_fd
-    closeFd gp_stdin_wr_fd
-    -}
