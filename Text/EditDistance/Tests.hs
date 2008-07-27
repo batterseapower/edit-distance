@@ -3,30 +3,32 @@ module Main where
 import Text.EditDistance.Tests.Framework
 import Text.EditDistance.Tests.Properties
 
+import System.Environment
+import System.Exit
+import System.Random
 import Test.QuickCheck
 
 
-myTest :: (Testable a) => a -> IO ()
-myTest | True      = check (defaultConfig { configMaxTest = 1000 })
-       | otherwise = test -- Quicker
-
-putStrIndented :: Int -> String -> IO ()
-putStrIndented how_much = putStr . indent how_much
-
-putStrLnIndented :: Int -> String -> IO ()
-putStrLnIndented how_much = putStrLn . indent how_much
-
-indent :: Int -> String -> String
-indent how_much what = (replicate how_much ' ') ++ what
-
-
-runTest :: Int -> Test -> IO ()
-runTest indent_level (Property name the_property) = do
-    putStrIndented indent_level (name ++ ": ")
-    myTest the_property
-runTest indent_level (TestGroup name the_tests) = do
-    putStrLnIndented indent_level (name ++ ":")
-    mapM_ (runTest (indent_level + 2)) the_tests
+testConfig :: Config
+testConfig | True      = defaultConfig { configMaxTest = 1000 }
+           | otherwise = defaultConfig
 
 main :: IO ()
-main = mapM_ (runTest 0) tests
+main = do
+    args <- getArgs
+    (rnd, seed) <- case args of 
+        []         -> mkStdGenWithKnownSeed
+        [old_seed] -> let seed = read old_seed
+                      in return (mkStdGen seed, seed)
+        _          -> error $ "Unrecognised arguments " ++ unwords args
+    
+    putStrLn $ "Running tests with seed " ++ show seed
+    result <- runTests testConfig rnd tests
+    exitWith $ if result
+               then ExitSuccess
+               else ExitFailure 1
+
+mkStdGenWithKnownSeed :: IO (StdGen, Int)
+mkStdGenWithKnownSeed = do
+    seed <- randomIO
+    return (mkStdGen seed, seed)
