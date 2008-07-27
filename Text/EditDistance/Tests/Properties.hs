@@ -1,11 +1,14 @@
 {-# LANGUAGE PatternGuards, PatternSignatures, ScopedTypeVariables #-}
 
-module Text.EditDistance.Tests.Properties (tests) where
+module Text.EditDistance.Tests.Properties (
+        tests
+    ) where
 
 import Text.EditDistance.EditCosts
 import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 import qualified Text.EditDistance.STUArray as STUArray
 import qualified Text.EditDistance.Bits as Bits
+import Text.EditDistance.Tests.EditOperationOntology
 import Text.EditDistance.Tests.Framework
 
 import Test.QuickCheck
