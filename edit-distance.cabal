@@ -13,6 +13,11 @@ Flag Tests
         Description:    Enable building the tests and benchmark suite
         Default:        False
 
+Flag SplitBase
+        Description:    Choose the new smaller, split-up base package
+        Default:        True
+
+
 Library
         Exposed-Modules:        Text.EditDistance
         Other-Modules:          Text.EditDistance.EditCosts
@@ -20,12 +25,22 @@ Library
                                 Text.EditDistance.STUArray
                                 Text.EditDistance.Bits
                                 Text.EditDistance.MonadUtilities
-        Build-Depends:          base, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
-        Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans
+        if flag(splitBase)
+                Build-Depends:  base >= 3, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
+        else
+                Build-Depends:  base < 3
+        
+        Ghc-Options:            -O2 -fvia-C -Wall
 
 Executable edit-distance-tests
         Main-Is:                Text/EditDistance/Tests.hs
-        Build-Depends:          base, array >= 0.1, random >= 1.0, QuickCheck >= 1.1
+        if flag(splitBase)
+                Build-Depends:  base >= 3, array >= 0.1, random >= 1.0,
+                                QuickCheck >= 1.1
+        else
+                Build-Depends:  base < 3, 
+                                QuickCheck >= 1.1
+        
         Extensions:             PatternGuards, PatternSignatures, 
                                 RankNTypes, ExistentialQuantification,
                                 ScopedTypeVariables
@@ -36,9 +51,14 @@ Executable edit-distance-tests
 
 Executable edit-distance-benchmark
         Main-Is:                Text/EditDistance/Benchmark.hs
-        Build-Depends:          base, array >= 0.1, random >= 1.0, old-time >= 1.0,
-                                parallel >= 1.0, process >= 1.0, unix >= 2.3
-        Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans -threaded
+        if flag(splitBase)
+                Build-Depends:  base >= 3, array >= 0.1, random >= 1.0, old-time >= 1.0, process >= 1.0,
+                                parallel >= 1.0, unix >= 2.3
+        else
+                Build-Depends:  base < 3,
+                                parallel >= 1.0, unix >= 2.3
+        
+        Ghc-Options:            -O2 -fvia-C -Wall
         
         if !flag(tests)
                 Buildable:      False
