@@ -2,3 +2,4 @@
 *.plot
 *.ps
 dist
+.DS_Store
