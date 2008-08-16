@@ -8,6 +8,7 @@ License:        BSD3
 License-File:   LICENSE
 Author:         Max Bolingbroke
 Maintainer:     batterseapower@hotmail.com
+Homepage:       http://bsp.lighthouseapp.com/projects/14822-hs-edit-distance/overview
 Build-Type:     Simple
 
 Flag Tests
