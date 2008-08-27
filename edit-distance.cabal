@@ -2,8 +2,8 @@ Name:           edit-distance
 Version:        0.1
 Cabal-Version:  >= 1.2
 Category:       Algorithms
-Synopsis:       Levenhstein and restricted Damerau-Levenshtein edit distances
-Description:    Optimized edit distances for fuzzy matching, including Levenhstein and restricted Damerau-Levenshtein algorithms.
+Synopsis:       Levenshtein and restricted Damerau-Levenshtein edit distances
+Description:    Optimized edit distances for fuzzy matching, including Levenshtein and restricted Damerau-Levenshtein algorithms.
 License:        BSD3
 License-File:   LICENSE
 Author:         Max Bolingbroke
