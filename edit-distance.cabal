@@ -1,15 +1,16 @@
-Name:           edit-distance
-Version:        0.1
-Cabal-Version:  >= 1.2
-Category:       Algorithms
-Synopsis:       Levenshtein and restricted Damerau-Levenshtein edit distances
-Description:    Optimized edit distances for fuzzy matching, including Levenshtein and restricted Damerau-Levenshtein algorithms.
-License:        BSD3
-License-File:   LICENSE
-Author:         Max Bolingbroke
-Maintainer:     batterseapower@hotmail.com
-Homepage:       http://wiki.omega-prime.co.uk/doku.php/projects/haskell/edit-distance
-Build-Type:     Simple
+Name:                edit-distance
+Version:             0.1
+Cabal-Version:       >= 1.2
+Category:            Algorithms
+Synopsis:            Levenshtein and restricted Damerau-Levenshtein edit distances
+Description:         Optimized edit distances for fuzzy matching, including Levenshtein and restricted Damerau-Levenshtein algorithms.
+License:             BSD3
+License-File:        LICENSE
+Extra-Source-Files:  README.textile
+Author:              Max Bolingbroke
+Maintainer:          batterseapower@hotmail.com
+Homepage:            http://github.com/batterseapower/edit-distance
+Build-Type:          Simple
 
 Flag Tests
         Description:    Enable building the tests and benchmark suite

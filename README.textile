@@ -1,0 +1,49 @@
+h1. Edit Distance Algorithms
+
+You can help improve this README with extra snippets and advice by using the "GitHub wiki":http://github.com/batterseapower/edit-distance/wikis/readme.
+
+
+h2. Installing
+
+To just install the library:
+
+<pre>
+<code>runghc Setup.lhs configure
+runghc Setup.lhs build
+sudo runghc Setup.lhs install
+</pre>
+</code>
+
+If you want to build the tests, to check it's all working:
+
+<pre>
+<code>runghc Setup.lhs configure -ftests
+runghc Setup.lhs build
+dist/build/edit-distance-tests/edit-distance-tests
+</pre>
+</code>
+
+
+h2. Description
+
+Edit distances algorithms for fuzzy matching. Specifically, this library provides:
+
+* "Levenshtein distance":http://en.wikipedia.org/wiki/Levenshtein_distance
+* "Restricted Damerau-Levenshtein distance":http://en.wikipedia.org/wiki/Damerau-Levenshtein_distance
+
+They have been fairly heavily optimized. Indeed, for situations where one of the strings is under 32 characters long I use a rather neat "bit vector" algorithm: see "the authors paper":http://www.cs.uta.fi/~helmu/pubs/psc02.pdf and "the associated errata":[http://www.cs.uta.fi/~helmu/pubs/PSCerr.html for more information. The algorithms __could__ be faster, but they aren't yet slow enough to force me into improving the situation.
+
+
+h2. Example
+
+<pre>
+<code>Text.EditDistance> levenshteinDistance defaultEditCosts "witch" "kitsch"
+2</code>
+</pre>
+
+
+h2. Linkage
+
+* "Hackage":http://hackage.haskell.org/cgi-bin/hackage-scripts/package/edit-distance
+* "Bug Tracker":http://bsp.lighthouseapp.com/projects/14822-hs-edit-distance
+* "GitHub":http://github.com/batterseapower/edit-distance
