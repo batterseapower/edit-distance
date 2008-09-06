@@ -1,0 +1,6 @@
+== High Priority ==
+
+== Medium Priority ==
+* Use WORD_SIZE_IN_BITS so that bit-vectors can benefit from 64 bit machines
+
+== Low Priority ==
