@@ -43,7 +43,7 @@ Library
 Executable edit-distance-tests
         Main-Is:                Text/EditDistance/Tests.hs
         
-        Build-Depends:          test-framework >= 0.1.1, QuickCheck >= 1.1
+        Build-Depends:          test-framework >= 0.1.1, QuickCheck >= 1.1, test-framework-quickcheck
         if flag(splitBase)
                 Build-Depends:  base >= 3, array >= 0.1, random >= 1.0
         else
