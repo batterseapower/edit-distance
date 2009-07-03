@@ -34,7 +34,7 @@ Library
                                 Text.EditDistance.MonadUtilities
         
         if flag(splitBase)
-                Build-Depends:  base >= 3, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
+                Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
         else
                 Build-Depends:  base < 3
         
@@ -52,7 +52,7 @@ Executable edit-distance-tests
         else            
                 Build-Depends:          test-framework >= 0.1.1, QuickCheck >= 1.1, test-framework-quickcheck
                 if flag(splitBase)
-                        Build-Depends:  base >= 3, array >= 0.1, random >= 1.0
+                        Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0
                 else
                         Build-Depends:  base < 3
 
@@ -63,7 +63,7 @@ Executable edit-distance-benchmark
                 Buildable:      False
         else
                 if flag(splitBase)
-                        Build-Depends:  base >= 3, array >= 0.1, random >= 1.0, old-time >= 1.0, process >= 1.0,
+                        Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0, old-time >= 1.0, process >= 1.0,
                                         parallel >= 1.0, unix >= 2.3
                 else
                         Build-Depends:  base < 3,
