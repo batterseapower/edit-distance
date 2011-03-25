@@ -5,7 +5,7 @@ module Text.EditDistance.EditCosts where
 data EditCosts = EditCosts {
     deletionCost :: !Int,
     insertionCost :: !Int,
-    substitutionCost :: !Int,
+    substitutionCost :: !(Either !Int (Char -> Char -> Int)),
     transpositionCost :: !Int
   }
   deriving (Eq)
