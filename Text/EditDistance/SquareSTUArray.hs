@@ -125,8 +125,10 @@ standardCosts :: EditCosts -> STUArray s (Int, Int) Int -> Char -> Char -> (Int,
 standardCosts !costs !cost_array !row_char !col_char (!i, !j) = do
     deletion_cost  <- fmap (+ (deletionCost costs))  $ readArray cost_array (i - 1, j)
     insertion_cost <- fmap (+ (insertionCost costs)) $ readArray cost_array (i, j - 1)
-    subst_cost     <- fmap (+ if row_char == col_char then 0 else (either id (\f -> f row_char col_char) (substitutionCost costs)
-)) $ readArray cost_array (i - 1, j - 1)
+    subst_cost     <- fmap (+ if row_char == col_char 
+                                then 0 
+                                else (either id (\f -> f row_char col_char) (substitutionCost costs))) 
+                           (readArray cost_array (i - 1, j - 1))
     return $ deletion_cost `min` insertion_cost `min` subst_cost
 
 {-# INLINE stringToArray #-}
