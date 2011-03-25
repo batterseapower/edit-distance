@@ -15,6 +15,6 @@ defaultEditCosts :: EditCosts
 defaultEditCosts = EditCosts {
     deletionCost = 1,
     insertionCost = 1,
-    substitutionCost = 1,
+    substitutionCost = Left 1,
     transpositionCost = 1
 }
