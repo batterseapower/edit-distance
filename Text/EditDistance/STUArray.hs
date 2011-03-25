@@ -167,7 +167,7 @@ standardCosts !costs !row_char !col_char !cost_left !cost_left_up !cost_up = del
   where
     deletion_cost  = cost_left + deletionCost costs
     insertion_cost = cost_up + insertionCost costs
-    subst_cost     = cost_left_up + if row_char == col_char then 0 else substitutionCost costs
+    subst_cost     = cost_left_up + if row_char == col_char then 0 else either id (\f -> f row_char col_char) (substitutionCost costs)
 
 {-# INLINE stringToArray #-}
 stringToArray :: String -> Int -> ST s (STUArray s Int Char)
