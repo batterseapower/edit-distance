@@ -1,0 +1,3 @@
+:set -Wall -fno-warn-name-shadowing  -fno-warn-orphans
+:load Text.EditDistance
+
