@@ -38,19 +38,19 @@ Library
         else
                 Build-Depends:  base < 3
         
-        Ghc-Options:            -O2 -fvia-C -Wall
+        Ghc-Options:            -O2
 
 Executable edit-distance-tests
         Main-Is:                Text/EditDistance/Tests.hs
         
         Extensions:             PatternGuards, PatternSignatures,
                                 ScopedTypeVariables
-        Ghc-Options:            -O2 -fvia-C -Wall -fno-warn-orphans
+        Ghc-Options:            -O2
         
         if !flag(tests)
                 Buildable:      False
         else            
-                Build-Depends:          test-framework >= 0.1.1, QuickCheck >= 1.1, test-framework-quickcheck
+                Build-Depends:          test-framework >= 0.1.1, QuickCheck >= 1.1 && < 2.0, test-framework-quickcheck
                 if flag(splitBase)
                         Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0
                 else
@@ -69,4 +69,4 @@ Executable edit-distance-benchmark
                         Build-Depends:  base < 3,
                                         parallel >= 1.0, unix >= 2.3
             
-        Ghc-Options:            -O2 -fvia-C -Wall
+        Ghc-Options:            -O2
