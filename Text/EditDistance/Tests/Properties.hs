@@ -51,10 +51,10 @@ tests = [ testGroup "Levenshtein Distance (SquareSTUArray)" sqstu_levenshteinDis
 
 interestingCosts :: EditCosts
 interestingCosts = EditCosts {
-    deletionCost = 1,
-    insertionCost = 2,
-    substitutionCost = 3, -- Can't be higher than deletion + insertion
-    transpositionCost = 3 -- Can't be higher than deletion + insertion
+    deletionCosts = ConstantCost 1,
+    insertionCosts = ConstantCost 2,
+    substitutionCosts = ConstantCost 3, -- Can't be higher than deletion + insertion
+    transpositionCosts = ConstantCost 3 -- Can't be higher than deletion + insertion
 }
 
 
@@ -66,7 +66,7 @@ crossCheckTests named_distances _op_dummy
     enumerated_named_distances = [(1 :: Int)..] `zip` named_distances
 
 distanceEqProperty :: (String -> String -> Int) -> (String -> String -> Int) -> op -> EditedString op -> Bool
-distanceEqProperty distance1 distance2 _op_dummy (MkEditedString old new _) = distance1 old new == distance2 old new
+distanceEqProperty distance1 distance2 _op_dummy (MkEditedString old new _ _) = distance1 old new == distance2 old new
 
 --distanceEqIfBelowProperty :: (EditOperation op) => Int -> (String -> String -> Int) -> (String -> String -> Int) -> EditCosts -> op -> EditedString op -> Property
 --distanceEqIfBelowProperty cutoff distance1 distance2 costs _op_dummy (MkEditedString old new ops) = (editCost costs ops <= cutoff) ==> distance1 old new == distance2 old new
@@ -85,10 +85,10 @@ standardDistanceTests distance costs _op_dummy
     prop_self_distance_zero str
       = testableDistance str str == 0
     prop_pure_deletion_cost_correct str
-      = testableDistance str "" == (deletionCost costs) * length str
+      = testableDistance str "" == sum [deletionCost costs c | c <- str]
     prop_pure_insertion_cost_correct str
-      = testableDistance "" str == (insertionCost costs) * length str
-    prop_single_op_cost_is_distance (MkEditedString old new ops :: EditedString op)
-      = (length old > 2) ==> testableDistance old new == editCost costs ops || old == new
-    prop_combined_op_cost_at_least_distance (MkEditedString old new ops :: EditedString [op])
-      = not (containsTransposition ops) ==> testableDistance old new <= editCost costs ops
+      = testableDistance "" str == sum [insertionCost costs c | c <- str]
+    prop_single_op_cost_is_distance (MkEditedString old new _ops cost :: EditedString op)
+      = (length old > 2) ==> testableDistance old new == cost costs || old == new
+    prop_combined_op_cost_at_least_distance (MkEditedString old new ops cost :: EditedString [op])
+      = not (containsTransposition ops) ==> testableDistance old new <= cost costs

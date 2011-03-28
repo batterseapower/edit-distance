@@ -10,7 +10,6 @@ import Text.EditDistance.MonadUtilities
 import Control.Monad
 import Control.Monad.ST
 import Data.Array.ST
-import Data.Array.MArray
 
 
 levenshteinDistance :: EditCosts -> String -> String -> Int
@@ -35,26 +34,26 @@ levenshteinDistanceST !costs !str1_len !str2_len str1 str2 = do
     cost_row' <- newArray_ (0, str1_len) :: ST s (STUArray s Int Int)
     
      -- Fill out the first row (j = 0)
-    loopM_ 1 str1_len $ \i -> writeArray cost_row i (deletionCost costs * i)
+    _ <- (\f -> foldM f 0 ([1..] `zip` str1)) $ \deletion_cost (i, col_char) -> let deletion_cost' = deletion_cost + deletionCost costs col_char in writeArray cost_row i deletion_cost' >> return deletion_cost'
     
     -- Fill out the remaining rows (j >= 1)
-    (final_row, _) <- foldM (levenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (cost_row, cost_row') [1..str2_len]
+    (_, final_row, _) <- foldM (levenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (0, cost_row, cost_row') [1..str2_len]
     
     -- Return an actual answer
     readArray final_row str1_len
 
-levenshteinDistanceSTRowWorker :: EditCosts -> Int -> STUArray s Int Char -> STUArray s Int Char -> (STUArray s Int Int, STUArray s Int Int) -> Int -> ST s (STUArray s Int Int, STUArray s Int Int)
-levenshteinDistanceSTRowWorker !costs !str1_len !str1_array !str2_array (!cost_row, !cost_row') !j = do
+levenshteinDistanceSTRowWorker :: EditCosts -> Int -> STUArray s Int Char -> STUArray s Int Char -> (Int, STUArray s Int Int, STUArray s Int Int) -> Int -> ST s (Int, STUArray s Int Int, STUArray s Int Int)
+levenshteinDistanceSTRowWorker !costs !str1_len !str1_array !str2_array (!insertion_cost, !cost_row, !cost_row') !j = do
     row_char <- readArray str2_array j
     
     -- Initialize the first element of the row (i = 0)
-    let here = insertionCost costs * j
-    writeArray cost_row' 0 here
+    let insertion_cost' = insertion_cost + insertionCost costs row_char
+    writeArray cost_row' 0 insertion_cost'
     
     -- Fill the remaining elements of the row (i >= 1)
     loopM_ 1 str1_len (colWorker row_char)
     
-    return (cost_row', cost_row)
+    return (insertion_cost', cost_row', cost_row)
   where
     colWorker row_char !i = do
         col_char <- readArray str1_array i
@@ -87,7 +86,7 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
     cost_row <- newArray_ (0, str1_len) :: ST s (STUArray s Int Int)
     
     -- Fill out the first row (j = 0)
-    loopM_ 1 str1_len $ \i -> writeArray cost_row i (deletionCost costs * i)
+    _ <- (\f -> foldM f 0 ([1..] `zip` str1)) $ \deletion_cost (!i, col_char) -> let deletion_cost' = deletion_cost + deletionCost costs col_char in writeArray cost_row i deletion_cost' >> return deletion_cost'
     
     if (str2_len == 0)
       then readArray cost_row str1_len
@@ -100,14 +99,14 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
         row_char <- readArray str2_array 1
 
         -- Initialize the first element of the row (i = 0)
-        let zero = insertionCost costs
+        let zero = insertionCost costs row_char
         writeArray cost_row' 0 zero
 
         -- Fill the remaining elements of the row (i >= 1)
         loopM_ 1 str1_len (firstRowColWorker str1_array row_char cost_row cost_row')
         
         -- Fill out the remaining rows (j >= 2)
-        (_, final_row, _, _) <- foldM (restrictedDamerauLevenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (cost_row, cost_row', cost_row'', row_char) [2..str2_len]
+        (_, _, final_row, _, _) <- foldM (restrictedDamerauLevenshteinDistanceSTRowWorker costs str1_len str1_array str2_array) (zero, cost_row, cost_row', cost_row'', row_char) [2..str2_len]
         
         -- Return an actual answer
         readArray final_row str1_len
@@ -123,27 +122,27 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
 
 restrictedDamerauLevenshteinDistanceSTRowWorker :: EditCosts -> Int
                                                 -> STUArray s Int Char -> STUArray s Int Char -- String arrays
-                                                -> (STUArray s Int Int, STUArray s Int Int, STUArray s Int Int, Char) -> Int -- Incoming rows of the matrix in recency order
-                                                -> ST s (STUArray s Int Int, STUArray s Int Int, STUArray s Int Int, Char)   -- Outgoing rows of the matrix in recency order
-restrictedDamerauLevenshteinDistanceSTRowWorker !costs !str1_len !str1_array !str2_array (!cost_row, !cost_row', !cost_row'', !prev_row_char) !j = do
+                                                -> (Int, STUArray s Int Int, STUArray s Int Int, STUArray s Int Int, Char) -> Int -- Incoming rows of the matrix in recency order
+                                                -> ST s (Int, STUArray s Int Int, STUArray s Int Int, STUArray s Int Int, Char)   -- Outgoing rows of the matrix in recency order
+restrictedDamerauLevenshteinDistanceSTRowWorker !costs !str1_len !str1_array !str2_array (!insertion_cost, !cost_row, !cost_row', !cost_row'', !prev_row_char) !j = do
     row_char <- readArray str2_array j
     
     -- Initialize the first element of the row (i = 0)
     zero_up    <- readArray cost_row' 0
-    let zero = insertionCost costs * j
-    writeArray cost_row'' 0 zero
+    let insertion_cost' = insertion_cost + insertionCost costs row_char
+    writeArray cost_row'' 0 insertion_cost'
     
     -- Initialize the second element of the row (i = 1)
     when (str1_len > 0) $ do
         col_char <- readArray str1_array 1
         one_up    <- readArray cost_row' 1
-        let one = standardCosts costs row_char col_char zero zero_up one_up
+        let one = standardCosts costs row_char col_char insertion_cost' zero_up one_up
         writeArray cost_row'' 1 one
         
         -- Fill the remaining elements of the row (i >= 2)
         loopM_ 2 str1_len (colWorker row_char)
     
-    return (cost_row', cost_row'', cost_row, row_char)
+    return (insertion_cost', cost_row', cost_row'', cost_row, row_char)
   where
     colWorker !row_char !i = do
         prev_col_char <- readArray str1_array (i - 1)
@@ -155,7 +154,7 @@ restrictedDamerauLevenshteinDistanceSTRowWorker !costs !str1_len !str1_array !st
         here_up    <- readArray cost_row' i
         let here_standard_only = standardCosts costs row_char col_char left left_up here_up
             here = if prev_row_char == col_char && prev_col_char == row_char
-                   then here_standard_only `min` (left_left_up_up + (transpositionCost costs))
+                   then here_standard_only `min` (left_left_up_up + transpositionCost costs col_char row_char)
                    else here_standard_only
         
         writeArray cost_row'' i here
@@ -165,9 +164,9 @@ restrictedDamerauLevenshteinDistanceSTRowWorker !costs !str1_len !str1_array !st
 standardCosts :: EditCosts -> Char -> Char -> Int -> Int -> Int -> Int
 standardCosts !costs !row_char !col_char !cost_left !cost_left_up !cost_up = deletion_cost `min` insertion_cost `min` subst_cost
   where
-    deletion_cost  = cost_left + deletionCost costs
-    insertion_cost = cost_up + insertionCost costs
-    subst_cost     = cost_left_up + if row_char == col_char then 0 else either id (\f -> f row_char col_char) (substitutionCost costs)
+    deletion_cost  = cost_left + deletionCost costs col_char
+    insertion_cost = cost_up + insertionCost costs row_char
+    subst_cost     = cost_left_up + if row_char == col_char then 0 else substitutionCost costs col_char row_char
 
 {-# INLINE stringToArray #-}
 stringToArray :: String -> Int -> ST s (STUArray s Int Char)

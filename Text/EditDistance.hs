@@ -17,7 +17,7 @@ import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 -- <http://en.wikipedia.org/wiki/Levenshtein_distance>.
 levenshteinDistance :: EditCosts -> String -> String -> Int
 levenshteinDistance costs str1 str2
-  | costs == defaultEditCosts
+  | isDefaultEditCosts costs
   , not (betterNotToUseBits str1_len || betterNotToUseBits str2_len) -- The Integer implementation of the Bits algorithm is quite inefficient, but scales better
   = Bits.levenshteinDistanceWithLengths str1_len str2_len str1 str2  -- than the STUArrays. The Word32 implementation is always better, if it is applicable
   | otherwise
@@ -34,7 +34,7 @@ levenshteinDistance costs str1 str2
 -- is edited more than once.  See also: <http://en.wikipedia.org/wiki/Damerau-Levenshtein_distance>.
 restrictedDamerauLevenshteinDistance :: EditCosts -> String -> String -> Int
 restrictedDamerauLevenshteinDistance costs str1 str2
-  | costs == defaultEditCosts
+  | isDefaultEditCosts costs
   , not (betterNotToUseBits str1_len || betterNotToUseBits str2_len)                 -- The Integer implementation of the Bits algorithm is quite inefficient, but scales better
   = Bits.restrictedDamerauLevenshteinDistanceWithLengths str1_len str2_len str1 str2 -- than the STUArrays. The Word32 implementation is always better, if it is applicable
   | otherwise

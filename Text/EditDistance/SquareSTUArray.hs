@@ -10,7 +10,6 @@ import Text.EditDistance.MonadUtilities
 import Control.Monad
 import Control.Monad.ST
 import Data.Array.ST
-import Data.Array.MArray
 
 
 levenshteinDistance :: EditCosts -> String -> String -> Int
@@ -33,21 +32,24 @@ levenshteinDistanceST !costs !str1_len !str2_len str1 str2 = do
     cost_array <- newArray_ ((0, 0), (str1_len, str2_len)) :: ST s (STUArray s (Int, Int) Int)
     
      -- Fill out the first row (j = 0)
-    loopM_ 1 str1_len $ \(!i) -> writeArray cost_array (i, 0) (deletionCost costs * i)
+    _ <- (\f -> foldM f 0 ([1..] `zip` str1)) $ \deletion_cost (!i, col_char) -> let deletion_cost' = deletion_cost + deletionCost costs col_char in writeArray cost_array (i, 0) deletion_cost' >> return deletion_cost'
     
     -- Fill the remaining rows (j >= 1)
-    loopM_ 1 str2_len (\(!j) -> do
+    _ <- (\f -> foldM f 0 [1..str2_len]) $ \insertion_cost (!j) -> do
         row_char <- readArray str2_array j
         
         -- Initialize the first element of the row (i = 0)
-        writeArray cost_array (0, j) (insertionCost costs * j)
+        let insertion_cost' = insertion_cost + insertionCost costs row_char
+        writeArray cost_array (0, j) insertion_cost'
         
         -- Fill the remaining elements of the row (i >= 1)
-        loopM_ 1 str1_len (\(!i) -> do
+        loopM_ 1 str1_len $ \(!i) -> do
             col_char <- readArray str1_array i
             
             cost <- standardCosts costs cost_array row_char col_char (i, j)
-            writeArray cost_array (i, j) cost))
+            writeArray cost_array (i, j) cost
+        
+        return insertion_cost'
     
     -- Return an actual answer
     readArray cost_array (str1_len, str2_len)
@@ -73,14 +75,14 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
     cost_array <- newArray_ ((0, 0), (str1_len, str2_len)) :: ST s (STUArray s (Int, Int) Int)
     
      -- Fill out the first row (j = 0)
-    loopM_ 1 str1_len $ \(!i) -> writeArray cost_array (i, 0) (deletionCost costs * i)
+    _ <- (\f -> foldM f 0 ([1..] `zip` str1)) $ \deletion_cost (!i, col_char) -> let deletion_cost' = deletion_cost + deletionCost costs col_char in writeArray cost_array (i, 0) deletion_cost' >> return deletion_cost'
     
     -- Fill out the second row (j = 1)
     when (str2_len > 0) $ do
         initial_row_char <- readArray str2_array 1
         
         -- Initialize the first element of the second row (i = 0)
-        writeArray cost_array (0, 1) (insertionCost costs)
+        writeArray cost_array (0, 1) (insertionCost costs initial_row_char)
         
         -- Initialize the remaining elements of the row (i >= 1)
         loopM_ 1 str1_len $ \(!i) -> do
@@ -95,7 +97,7 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
         prev_row_char <- readArray str2_array (j - 1)
         
         -- Initialize the first element of the row (i = 0)
-        writeArray cost_array (0, j) (insertionCost costs * j)
+        writeArray cost_array (0, j) (insertionCost costs row_char * j)
         
         -- Initialize the second element of the row (i = 1)
         when (str1_len > 0) $ do
@@ -111,7 +113,7 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
             
             standard_cost <- standardCosts costs cost_array row_char col_char (i, j)
             cost <- if prev_row_char == col_char && prev_col_char == row_char
-                    then do transpose_cost <- fmap (+ (transpositionCost costs)) $ readArray cost_array (i - 2, j - 2)
+                    then do transpose_cost <- fmap (+ (transpositionCost costs col_char row_char)) $ readArray cost_array (i - 2, j - 2)
                             return (standard_cost `min` transpose_cost)
                     else return standard_cost
             writeArray cost_array (i, j) cost))
@@ -123,11 +125,11 @@ restrictedDamerauLevenshteinDistanceST !costs str1_len str2_len str1 str2 = do
 {-# INLINE standardCosts #-}
 standardCosts :: EditCosts -> STUArray s (Int, Int) Int -> Char -> Char -> (Int, Int) -> ST s Int
 standardCosts !costs !cost_array !row_char !col_char (!i, !j) = do
-    deletion_cost  <- fmap (+ (deletionCost costs))  $ readArray cost_array (i - 1, j)
-    insertion_cost <- fmap (+ (insertionCost costs)) $ readArray cost_array (i, j - 1)
-    subst_cost     <- fmap (+ if row_char == col_char 
+    deletion_cost  <- fmap (+ (deletionCost costs col_char))  $ readArray cost_array (i - 1, j)
+    insertion_cost <- fmap (+ (insertionCost costs row_char)) $ readArray cost_array (i, j - 1)
+    subst_cost     <- fmap (+ if row_char == col_char
                                 then 0 
-                                else (either id (\f -> f row_char col_char) (substitutionCost costs))) 
+                                else (substitutionCost costs col_char row_char))
                            (readArray cost_array (i - 1, j - 1))
     return $ deletion_cost `min` insertion_cost `min` subst_cost
 
