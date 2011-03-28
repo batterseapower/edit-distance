@@ -49,9 +49,9 @@ if [ "$?" != "0" ]; then
     exit 1
 fi
 
-# You need to have stored your Hackage username and password as directed by cabal-upload
+# You need to have stored your Hackage username and password as directed by cabal upload
 # I use -v5 because otherwise the error messages can be cryptic :-)
-cabal-upload -v5 $filename
+cabal upload -v2 $filename
 
 if [ "$?" != "0" ]; then
     echo "Hackage upload failed, aborting"
