@@ -15,10 +15,10 @@ cost (ConstantCost i) _ = i
 cost (VariableCost f) x = f x
 
 data EditCosts = EditCosts {
-    deletionCosts :: Costs Char,
-    insertionCosts :: Costs Char,
-    substitutionCosts :: Costs (Char, Char),
-    transpositionCosts :: Costs (Char, Char)
+    deletionCosts :: Costs Char,             -- ^ Cost of deleting the specified character from the left string
+    insertionCosts :: Costs Char,            -- ^ Cost of inserting the specified characters into the right string
+    substitutionCosts :: Costs (Char, Char), -- ^ Cost of substituting a character from the left string with one from the right string -- with arguments in that order.
+    transpositionCosts :: Costs (Char, Char) -- ^ Cost of moving one character backwards and the other forwards -- with arguments in that order.
   }
 
 {-# INLINE deletionCost #-}
