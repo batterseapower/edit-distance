@@ -2,7 +2,7 @@
 
 -- | Computing the edit distances between strings
 module Text.EditDistance ( 
-        EditCosts(..), defaultEditCosts, 
+        Costs(..), EditCosts(..), defaultEditCosts, 
         levenshteinDistance, restrictedDamerauLevenshteinDistance
     ) where
 
