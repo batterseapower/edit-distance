@@ -33,7 +33,7 @@ levenshteinDistanceWithLengths !m !n str1 str2
 
 {-# SPECIALIZE INLINE levenshteinDistance' :: Word32 -> Int -> Int -> String -> String -> Int #-}
 {-# SPECIALIZE INLINE levenshteinDistance' :: Integer -> Int -> Int -> String -> String -> Int #-}
-levenshteinDistance' :: Bits bv => bv -> Int -> Int -> String -> String -> Int
+levenshteinDistance' :: (Num bv, Bits bv) => bv -> Int -> Int -> String -> String -> Int
 levenshteinDistance' (_bv_dummy :: bv) !m !n str1 str2 
   | [] <- str1 = n
   | otherwise  = extractAnswer $ foldl' (levenshteinDistanceWorker (matchVectors str1) top_bit_mask vector_mask) (m_ones, 0, m) str2
@@ -43,7 +43,7 @@ levenshteinDistance' (_bv_dummy :: bv) !m !n str1 str2
 
 {-# SPECIALIZE levenshteinDistanceWorker :: IM.IntMap Word32 -> Word32 -> Word32 -> (Word32, Word32, Int) -> Char -> (Word32, Word32, Int) #-}
 {-# SPECIALIZE levenshteinDistanceWorker :: IM.IntMap Integer -> Integer -> Integer -> (Integer, Integer, Int) -> Char -> (Integer, Integer, Int) #-}
-levenshteinDistanceWorker :: Bits bv => IM.IntMap bv -> bv -> bv -> (bv, bv, Int) -> Char -> (bv, bv, Int)
+levenshteinDistanceWorker :: (Num bv, Bits bv) => IM.IntMap bv -> bv -> bv -> (bv, bv, Int) -> Char -> (bv, bv, Int)
 levenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!vp, !vn, !distance) !char2 
   = {- trace (unlines ["pm = " ++ show pm'
                    ,"d0 = " ++ show d0'
@@ -183,7 +183,7 @@ restrictedDamerauLevenshteinDistanceWithLengths !m !n str1 str2
 
 {-# SPECIALIZE INLINE restrictedDamerauLevenshteinDistance' :: Word32 -> Int -> Int -> String -> String -> Int #-}
 {-# SPECIALIZE INLINE restrictedDamerauLevenshteinDistance' :: Integer -> Int -> Int -> String -> String -> Int #-}
-restrictedDamerauLevenshteinDistance' :: (Bits bv) => bv -> Int -> Int -> String -> String -> Int
+restrictedDamerauLevenshteinDistance' :: (Num bv, Bits bv) => bv -> Int -> Int -> String -> String -> Int
 restrictedDamerauLevenshteinDistance' (_bv_dummy :: bv) !m !n str1 str2 
   | [] <- str1 = n
   | otherwise  = extractAnswer $ foldl' (restrictedDamerauLevenshteinDistanceWorker (matchVectors str1) top_bit_mask vector_mask) (0, 0, m_ones, 0, m) str2
@@ -193,7 +193,7 @@ restrictedDamerauLevenshteinDistance' (_bv_dummy :: bv) !m !n str1 str2
 
 {-# SPECIALIZE restrictedDamerauLevenshteinDistanceWorker :: IM.IntMap Word32 -> Word32 -> Word32 -> (Word32, Word32, Word32, Word32, Int) -> Char -> (Word32, Word32, Word32, Word32, Int) #-}
 {-# SPECIALIZE restrictedDamerauLevenshteinDistanceWorker :: IM.IntMap Integer -> Integer -> Integer -> (Integer, Integer, Integer, Integer, Int) -> Char -> (Integer, Integer, Integer, Integer, Int) #-}
-restrictedDamerauLevenshteinDistanceWorker :: (Bits bv) => IM.IntMap bv -> bv -> bv -> (bv, bv, bv, bv, Int) -> Char -> (bv, bv, bv, bv, Int)
+restrictedDamerauLevenshteinDistanceWorker :: (Num bv, Bits bv) => IM.IntMap bv -> bv -> bv -> (bv, bv, bv, bv, Int) -> Char -> (bv, bv, bv, bv, Int)
 restrictedDamerauLevenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!pm, !d0, !vp, !vn, !distance) !char2 
   = (pm', d0', vp', vn', distance'')
   where
@@ -215,12 +215,12 @@ restrictedDamerauLevenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask 
 
 {-# SPECIALIZE INLINE sizedComplement :: Word32 -> Word32 -> Word32 #-}
 {-# SPECIALIZE INLINE sizedComplement :: Integer -> Integer -> Integer #-}
-sizedComplement :: Bits bv => bv -> bv -> bv
+sizedComplement :: (Num bv, Bits bv) => bv -> bv -> bv
 sizedComplement vector_mask vect = vector_mask `xor` vect
 
 {-# SPECIALIZE matchVectors :: String -> IM.IntMap Word32 #-}
 {-# SPECIALIZE matchVectors :: String -> IM.IntMap Integer #-}
-matchVectors :: Bits bv => String -> IM.IntMap bv
+matchVectors :: (Num bv, Bits bv) => String -> IM.IntMap bv
 matchVectors = snd . foldl' go (0 :: Int, IM.empty)
   where
     go (!ix, !im) char = let ix' = ix + 1
