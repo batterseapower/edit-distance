@@ -20,3 +20,8 @@ foldM f = go
   where go a (x:xs)  =  f a x >>= \fax -> go fax xs
         go a []      =  return a
 -}
+
+-- If we just use a standard foldM then our loops often box stuff up to return from the loop which is then immediately discarded
+{-# INLINE foldMK #-}
+foldMK             :: (Monad m) => (a -> b -> m a) -> a -> [b] -> (a -> m res) -> m res
+foldMK f a xs k = foldr (\x rest a -> f a x >>= rest) k xs a

@@ -38,27 +38,26 @@ levenshteinDistanceST !costs !str1_len !str2_len str1 str2 = do
     write_cost <- unsafeWriteArray' cost_array
     
      -- Fill out the first row (j = 0)
-    _ <- (\f -> foldM f (1, 0) str1) $ \(i, deletion_cost) col_char -> let deletion_cost' = deletion_cost + deletionCost costs col_char in write_cost (i, 0) deletion_cost' >> return (i + 1, deletion_cost')
-    
-    -- Fill the remaining rows (j >= 1)
-    _ <- (\f -> foldM f 0 [1..str2_len]) $ \insertion_cost (!j) -> do
-        row_char <- read_str2 j
-        
-        -- Initialize the first element of the row (i = 0)
-        let insertion_cost' = insertion_cost + insertionCost costs row_char
-        write_cost (0, j) insertion_cost'
-        
-        -- Fill the remaining elements of the row (i >= 1)
-        loopM_ 1 str1_len $ \(!i) -> do
-            col_char <- read_str1 i
-            
-            cost <- standardCosts costs read_cost row_char col_char (i, j)
-            write_cost (i, j) cost
-        
-        return insertion_cost'
-    
-    -- Return an actual answer
-    read_cost (str1_len, str2_len)
+    (\f -> foldMK f (1, 0) str1) (\(i, deletion_cost) col_char -> let deletion_cost' = deletion_cost + deletionCost costs col_char in write_cost (i, 0) deletion_cost' >> return (i + 1, deletion_cost')) $ \_ -> do
+      
+      -- Fill the remaining rows (j >= 1)
+      (\f -> foldMK f 0 [1..str2_len]) (\insertion_cost (!j) -> do
+          row_char <- read_str2 j
+          
+          -- Initialize the first element of the row (i = 0)
+          let insertion_cost' = insertion_cost + insertionCost costs row_char
+          write_cost (0, j) insertion_cost'
+          
+          -- Fill the remaining elements of the row (i >= 1)
+          loopM_ 1 str1_len $ \(!i) -> do
+              col_char <- read_str1 i
+              
+              cost <- standardCosts costs read_cost row_char col_char (i, j)
+              write_cost (i, j) cost
+          
+          return insertion_cost') $ \_ -> do
+            -- Return an actual answer
+            read_cost (str1_len, str2_len)
 
 
 restrictedDamerauLevenshteinDistance :: EditCosts -> String -> String -> Int
