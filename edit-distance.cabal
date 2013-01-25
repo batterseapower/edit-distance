@@ -32,6 +32,7 @@ Library
                                 Text.EditDistance.STUArray
                                 Text.EditDistance.Bits
                                 Text.EditDistance.MonadUtilities
+                                Text.EditDistance.ArrayUtilities
         
         if flag(splitBase)
                 Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0, containers >= 0.1.0.1
@@ -63,10 +64,10 @@ Executable edit-distance-benchmark
                 Buildable:      False
         else
                 if flag(splitBase)
-                        Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0, old-time >= 1.0, process >= 1.0,
-                                        parallel >= 1.0, unix >= 2.3
+                        Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0, time >= 1.0, process >= 1.0,
+                                        deepseq >= 1.2, unix >= 2.3
                 else
                         Build-Depends:  base < 3,
-                                        parallel >= 1.0, unix >= 2.3
+                                        deepseq >= 1.2, unix >= 2.3
             
         Ghc-Options:            -O2

@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, PatternSignatures, ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE PatternGuards, PatternSignatures, ScopedTypeVariables, BangPatterns, Rank2Types #-}
 
 module Text.EditDistance.Bits (
         levenshteinDistance, levenshteinDistanceWithLengths, {-levenshteinDistanceCutoff,-} restrictedDamerauLevenshteinDistance, restrictedDamerauLevenshteinDistanceWithLengths
@@ -14,6 +14,24 @@ import qualified Data.IntMap as IM
 
 --type BitVector = Integer
 
+-- Continuation-passing foldl's to work around the lack of recursive CPR optimisation in GHC
+
+{-# INLINE foldl'3k #-}
+foldl'3k :: (forall res. (a, b, c) -> x -> ((a, b, c) -> res) -> res)
+         -> (a, b, c) -> [x] -> (a, b, c)
+foldl'3k f = go
+  where go (!a, !b, !c) _      | False = undefined
+        go ( a,  b,  c) []     = (a, b, c)
+        go ( a,  b,  c) (x:xs) = f (a, b, c) x $ \abc -> go abc xs
+
+{-# INLINE foldl'5k #-}
+foldl'5k :: (forall res. (a, b, c, d, e) -> x -> ((a, b, c, d, e) -> res) -> res)
+         -> (a, b, c, d, e) -> [x] -> (a, b, c, d, e)
+foldl'5k f = go
+  where go (!a, !b, !c, !d, !e) _      | False = undefined
+        go ( a,  b,  c,  d,  e) []     = (a, b, c, d, e)
+        go ( a,  b,  c,  d,  e) (x:xs) = f (a, b, c, d, e) x $ \abcde -> go abcde xs
+
 -- Based on the algorithm presented in "A Bit-Vector Algorithm for Computing Levenshtein and Damerau Edit Distances" in PSC'02 (Heikki Hyyro).
 -- See http://www.cs.uta.fi/~helmu/pubs/psc02.pdf and http://www.cs.uta.fi/~helmu/pubs/PSCerr.html for an explanation
 levenshteinDistance :: String -> String -> Int
@@ -24,27 +42,29 @@ levenshteinDistance str1 str2 = levenshteinDistanceWithLengths m n str1 str2
 
 levenshteinDistanceWithLengths :: Int -> Int -> String -> String -> Int
 levenshteinDistanceWithLengths !m !n str1 str2
-  | m <= n    = if n <= 32 -- n must be larger so this check is sufficient
-                then levenshteinDistance' (undefined :: Word32) m n str1 str2
+  | m <= n    = if n <= 64 -- n must be larger so this check is sufficient
+                then levenshteinDistance' (undefined :: Word64) m n str1 str2
                 else levenshteinDistance' (undefined :: Integer) m n str1 str2
-  | otherwise = if m <= 32 -- m must be larger so this check is sufficient
-                then levenshteinDistance' (undefined :: Word32) n m str2 str1
+  | otherwise = if m <= 64 -- m must be larger so this check is sufficient
+                then levenshteinDistance' (undefined :: Word64) n m str2 str1
                 else levenshteinDistance' (undefined :: Integer) n m str2 str1
 
-{-# SPECIALIZE INLINE levenshteinDistance' :: Word32 -> Int -> Int -> String -> String -> Int #-}
-{-# SPECIALIZE INLINE levenshteinDistance' :: Integer -> Int -> Int -> String -> String -> Int #-}
+{-# SPECIALIZE levenshteinDistance' :: Word64 -> Int -> Int -> String -> String -> Int #-}
+{-# SPECIALIZE levenshteinDistance' :: Integer -> Int -> Int -> String -> String -> Int #-}
 levenshteinDistance' :: (Num bv, Bits bv) => bv -> Int -> Int -> String -> String -> Int
 levenshteinDistance' (_bv_dummy :: bv) !m !n str1 str2 
   | [] <- str1 = n
-  | otherwise  = extractAnswer $ foldl' (levenshteinDistanceWorker (matchVectors str1) top_bit_mask vector_mask) (m_ones, 0, m) str2
+  | otherwise  = extractAnswer $ foldl'3k (levenshteinDistanceWorker (matchVectors str1) top_bit_mask vector_mask) (m_ones, 0, m) str2
   where m_ones@vector_mask = (2 ^ m) - 1
         top_bit_mask = 1 `shiftL` (m - 1) :: bv
         extractAnswer (_, _, distance) = distance
 
-{-# SPECIALIZE levenshteinDistanceWorker :: IM.IntMap Word32 -> Word32 -> Word32 -> (Word32, Word32, Int) -> Char -> (Word32, Word32, Int) #-}
-{-# SPECIALIZE levenshteinDistanceWorker :: IM.IntMap Integer -> Integer -> Integer -> (Integer, Integer, Int) -> Char -> (Integer, Integer, Int) #-}
-levenshteinDistanceWorker :: (Num bv, Bits bv) => IM.IntMap bv -> bv -> bv -> (bv, bv, Int) -> Char -> (bv, bv, Int)
-levenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!vp, !vn, !distance) !char2 
+{-# SPECIALIZE INLINE levenshteinDistanceWorker :: IM.IntMap Word64  -> Word64  -> Word64  -> (Word64, Word64, Int)   -> Char -> ((Word64,  Word64,  Int) -> res) -> res #-}
+{-# SPECIALIZE INLINE levenshteinDistanceWorker :: IM.IntMap Integer -> Integer -> Integer -> (Integer, Integer, Int) -> Char -> ((Integer, Integer, Int) -> res) -> res #-}
+levenshteinDistanceWorker :: (Num bv, Bits bv)
+                          => IM.IntMap bv -> bv -> bv -> (bv, bv, Int) -> Char
+                          -> ((bv, bv, Int) -> res) -> res
+levenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!vp, !vn, !distance) !char2 k
   = {- trace (unlines ["pm = " ++ show pm'
                    ,"d0 = " ++ show d0'
                    ,"hp = " ++ show hp'
@@ -52,7 +72,7 @@ levenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!vp, !vn, !dista
                    ,"vp = " ++ show vp'
                    ,"vn = " ++ show vn'
                    ,"distance' = " ++ show distance'
-                   ,"distance'' = " ++ show distance'']) -} (vp', vn', distance'')
+                   ,"distance'' = " ++ show distance'']) -} vp' `seq` vn' `seq` distance'' `seq` k (vp', vn', distance'')
   where
     pm' = IM.findWithDefault 0 (ord char2) str1_mvs
     
@@ -174,28 +194,28 @@ restrictedDamerauLevenshteinDistance str1 str2 = restrictedDamerauLevenshteinDis
 
 restrictedDamerauLevenshteinDistanceWithLengths :: Int -> Int -> String -> String -> Int
 restrictedDamerauLevenshteinDistanceWithLengths !m !n str1 str2
-  | m <= n    = if n <= 32 -- n must be larger so this check is sufficient
-                then restrictedDamerauLevenshteinDistance' (undefined :: Word32) m n str1 str2
+  | m <= n    = if n <= 64 -- n must be larger so this check is sufficient
+                then restrictedDamerauLevenshteinDistance' (undefined :: Word64) m n str1 str2
                 else restrictedDamerauLevenshteinDistance' (undefined :: Integer) m n str1 str2
-  | otherwise = if m <= 32 -- m must be larger so this check is sufficient
-                then restrictedDamerauLevenshteinDistance' (undefined :: Word32) n m str2 str1
+  | otherwise = if m <= 64 -- m must be larger so this check is sufficient
+                then restrictedDamerauLevenshteinDistance' (undefined :: Word64) n m str2 str1
                 else restrictedDamerauLevenshteinDistance' (undefined :: Integer) n m str2 str1
 
-{-# SPECIALIZE INLINE restrictedDamerauLevenshteinDistance' :: Word32 -> Int -> Int -> String -> String -> Int #-}
-{-# SPECIALIZE INLINE restrictedDamerauLevenshteinDistance' :: Integer -> Int -> Int -> String -> String -> Int #-}
+{-# SPECIALIZE restrictedDamerauLevenshteinDistance' :: Word64 -> Int -> Int -> String -> String -> Int #-}
+{-# SPECIALIZE restrictedDamerauLevenshteinDistance' :: Integer -> Int -> Int -> String -> String -> Int #-}
 restrictedDamerauLevenshteinDistance' :: (Num bv, Bits bv) => bv -> Int -> Int -> String -> String -> Int
 restrictedDamerauLevenshteinDistance' (_bv_dummy :: bv) !m !n str1 str2 
   | [] <- str1 = n
-  | otherwise  = extractAnswer $ foldl' (restrictedDamerauLevenshteinDistanceWorker (matchVectors str1) top_bit_mask vector_mask) (0, 0, m_ones, 0, m) str2
+  | otherwise  = extractAnswer $ foldl'5k (restrictedDamerauLevenshteinDistanceWorker (matchVectors str1) top_bit_mask vector_mask) (0, 0, m_ones, 0, m) str2
   where m_ones@vector_mask = (2 ^ m) - 1
         top_bit_mask = 1 `shiftL` (m - 1) :: bv
         extractAnswer (_, _, _, _, distance) = distance
 
-{-# SPECIALIZE restrictedDamerauLevenshteinDistanceWorker :: IM.IntMap Word32 -> Word32 -> Word32 -> (Word32, Word32, Word32, Word32, Int) -> Char -> (Word32, Word32, Word32, Word32, Int) #-}
-{-# SPECIALIZE restrictedDamerauLevenshteinDistanceWorker :: IM.IntMap Integer -> Integer -> Integer -> (Integer, Integer, Integer, Integer, Int) -> Char -> (Integer, Integer, Integer, Integer, Int) #-}
-restrictedDamerauLevenshteinDistanceWorker :: (Num bv, Bits bv) => IM.IntMap bv -> bv -> bv -> (bv, bv, bv, bv, Int) -> Char -> (bv, bv, bv, bv, Int)
-restrictedDamerauLevenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!pm, !d0, !vp, !vn, !distance) !char2 
-  = (pm', d0', vp', vn', distance'')
+{-# SPECIALIZE INLINE restrictedDamerauLevenshteinDistanceWorker :: IM.IntMap Word64 -> Word64 -> Word64 -> (Word64, Word64, Word64, Word64, Int) -> Char -> ((Word64, Word64, Word64, Word64, Int) -> res) -> res #-}
+{-# SPECIALIZE INLINE restrictedDamerauLevenshteinDistanceWorker :: IM.IntMap Integer -> Integer -> Integer -> (Integer, Integer, Integer, Integer, Int) -> Char -> ((Integer, Integer, Integer, Integer, Int) -> res) -> res #-}
+restrictedDamerauLevenshteinDistanceWorker :: (Num bv, Bits bv) => IM.IntMap bv -> bv -> bv -> (bv, bv, bv, bv, Int) -> Char -> ((bv, bv, bv, bv, Int) -> res) -> res
+restrictedDamerauLevenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask (!pm, !d0, !vp, !vn, !distance) !char2 k
+  = pm' `seq` d0' `seq` vp' `seq` vn' `seq` distance'' `seq` k (pm', d0', vp', vn', distance'')
   where
     pm' = IM.findWithDefault 0 (ord char2) str1_mvs
     
@@ -213,12 +233,12 @@ restrictedDamerauLevenshteinDistanceWorker !str1_mvs !top_bit_mask !vector_mask 
     distance'' = if hn' .&. top_bit_mask /= 0 then distance' - 1 else distance'
 
 
-{-# SPECIALIZE INLINE sizedComplement :: Word32 -> Word32 -> Word32 #-}
+{-# SPECIALIZE INLINE sizedComplement :: Word64 -> Word64 -> Word64 #-}
 {-# SPECIALIZE INLINE sizedComplement :: Integer -> Integer -> Integer #-}
 sizedComplement :: (Num bv, Bits bv) => bv -> bv -> bv
 sizedComplement vector_mask vect = vector_mask `xor` vect
 
-{-# SPECIALIZE matchVectors :: String -> IM.IntMap Word32 #-}
+{-# SPECIALIZE matchVectors :: String -> IM.IntMap Word64 #-}
 {-# SPECIALIZE matchVectors :: String -> IM.IntMap Integer #-}
 matchVectors :: (Num bv, Bits bv) => String -> IM.IntMap bv
 matchVectors = snd . foldl' go (0 :: Int, IM.empty)

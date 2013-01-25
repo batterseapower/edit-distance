@@ -31,7 +31,7 @@ Edit distances algorithms for fuzzy matching. Specifically, this library provide
 * "Levenshtein distance":http://en.wikipedia.org/wiki/Levenshtein_distance
 * "Restricted Damerau-Levenshtein distance":http://en.wikipedia.org/wiki/Damerau-Levenshtein_distance
 
-They have been fairly heavily optimized. Indeed, for situations where one of the strings is under 32 characters long I use a rather neat "bit vector" algorithm: see "the authors paper":http://www.cs.uta.fi/~helmu/pubs/psc02.pdf and "the associated errata":[http://www.cs.uta.fi/~helmu/pubs/PSCerr.html for more information. The algorithms __could__ be faster, but they aren't yet slow enough to force me into improving the situation.
+They have been fairly heavily optimized. Indeed, for situations where one of the strings is under 64 characters long I use a rather neat "bit vector" algorithm: see "the authors paper":http://www.cs.uta.fi/~helmu/pubs/psc02.pdf and "the associated errata":[http://www.cs.uta.fi/~helmu/pubs/PSCerr.html for more information. The algorithms __could__ be faster, but they aren't yet slow enough to force me into improving the situation.
 
 
 h2. Example
