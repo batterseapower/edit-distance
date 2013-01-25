@@ -1,5 +1,5 @@
 Name:                edit-distance
-Version:             0.2.1.1
+Version:             0.2.1.2
 Cabal-Version:       >= 1.2
 Category:            Algorithms
 Synopsis:            Levenshtein and restricted Damerau-Levenshtein edit distances
