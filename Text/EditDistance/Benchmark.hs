@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-full-laziness #-}
 module Main where
 
 import Text.EditDistance.EditCosts
@@ -7,14 +8,18 @@ import qualified Text.EditDistance.Bits as Bits
 import qualified Text.EditDistance.STUArray as STUArray
 import qualified Text.EditDistance.SquareSTUArray as SquareSTUArray
 
+import Criterion.Config
+import Criterion.Main
 import System.IO
 import System.Exit
+import System.Environment
 --import System.Posix.IO
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import System.Random
 import System.Process
 import System.Mem
 import Data.List
+import Data.Monoid (mempty)
 import Control.Monad
 import Control.Exception
 --import Control.Concurrent       ( forkIO, threadDelay )
@@ -85,19 +90,27 @@ toGnuPlotFormat samples = unlines (header : map sampleToGnuPlotFormat samples)
 
 main :: IO ()
 main = do
-    let sample_range = [(i, j) | i <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]
-                               , j <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]]
-        sample_titles = ["Bits", "STUArray", "SquareSTUArray", "Best effort"]
+    args <- getArgs
+    let sample_titles = ["Bits", "SquareSTUArray", "STUArray", "Best effort"]
         sample_fns = [Bits.levenshteinDistance, SquareSTUArray.levenshteinDistance defaultEditCosts, STUArray.levenshteinDistance defaultEditCosts, BestEffort.levenshteinDistance defaultEditCosts]
-        --sample_fns = [Bits.restrictedDamerauLevenshteinDistance, SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts, STUArray.restrictedDamerauLevenshteinDistance defaultEditCosts, BestEffort.restrictedDamerauLevenshteinDistance defaultEditCosts]
-    sampless <- forM sample_fns $ \sample_fn -> augment (sample sample_fn) sample_range
-    let listified_samples = foldr1 joinOnKey sampless
-    
-    writeFile "data.plot" (toGnuPlotFormat listified_samples)
-    writeFile "plot.script" (gnuPlotScript sample_titles)
-    
-    (_inp, _outp, _err, gp_pid) <- runInteractiveCommand "(cat plot.script | gnuplot); RETCODE=$?; rm plot.script; exit $RETCODE"
-    gp_exit_code <- waitForProcess gp_pid
-    case gp_exit_code of
-            ExitSuccess -> putStrLn "Plotted at 'data.ps'"
-            ExitFailure err_no -> putStrLn $ "Failed! Error code " ++ show err_no
+    case args of
+      ["plot"] -> do
+        let sample_range = [(i, j) | i <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]
+                                   , j <- [0,sTRING_SIZE_STEP..mAX_STRING_SIZE]]
+            --sample_fns = [Bits.restrictedDamerauLevenshteinDistance, SquareSTUArray.restrictedDamerauLevenshteinDistance defaultEditCosts, STUArray.restrictedDamerauLevenshteinDistance defaultEditCosts, BestEffort.restrictedDamerauLevenshteinDistance defaultEditCosts]
+        sampless <- forM sample_fns $ \sample_fn -> augment (sample sample_fn) sample_range
+        let listified_samples = foldr1 joinOnKey sampless
+        
+        writeFile "data.plot" (toGnuPlotFormat listified_samples)
+        writeFile "plot.script" (gnuPlotScript sample_titles)
+        
+        (_inp, _outp, _err, gp_pid) <- runInteractiveCommand "(cat plot.script | gnuplot); RETCODE=$?; rm plot.script; exit $RETCODE"
+        gp_exit_code <- waitForProcess gp_pid
+        case gp_exit_code of
+                ExitSuccess -> putStrLn "Plotted at 'data.ps'"
+                ExitFailure err_no -> putStrLn $ "Failed! Error code " ++ show err_no    
+      _ -> do
+        let mkBench n m name f = bench name $ whnf (uncurry f) (replicate n 'a', replicate m 'b')
+            cfg = mempty { cfgSamples = ljust 500 }
+        defaultMainWith cfg (return ()) [bgroup (show (n, m)) (zipWith (mkBench n m) sample_titles sample_fns)
+                                        | (n, m) <- [(32, 32), (32, mAX_STRING_SIZE), (mAX_STRING_SIZE, 32), (mAX_STRING_SIZE, mAX_STRING_SIZE)]]

@@ -65,7 +65,7 @@ Executable edit-distance-benchmark
         else
                 if flag(splitBase)
                         Build-Depends:  base >= 3 && < 5, array >= 0.1, random >= 1.0, time >= 1.0, process >= 1.0,
-                                        deepseq >= 1.2, unix >= 2.3
+                                        deepseq >= 1.2, unix >= 2.3, criterion >= 0.6
                 else
                         Build-Depends:  base < 3,
                                         deepseq >= 1.2, unix >= 2.3

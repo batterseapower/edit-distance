@@ -22,6 +22,7 @@ foldM f = go
 -}
 
 -- If we just use a standard foldM then our loops often box stuff up to return from the loop which is then immediately discarded
+-- TODO: using this instead of foldM improves our benchmarks by about 2% but makes the code quite ugly.. figure out what to do
 {-# INLINE foldMK #-}
 foldMK             :: (Monad m) => (a -> b -> m a) -> a -> [b] -> (a -> m res) -> m res
 foldMK f a xs k = foldr (\x rest a -> f a x >>= rest) k xs a
